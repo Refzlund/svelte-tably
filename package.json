@@ -1,6 +1,11 @@
 {
-	"name": "table",
-	"version": "0.0.1",
+	"name": "svelte-tably",
+	"version": "1.0.0-next.1",
+	"repository": "github:refzlund/svelte-tably",
+	"homepage": "https://github.com/Refzlund/svelte-tably",
+	"bugs": {
+		"url": "https://github.com/Refzlund/svelte-tably/issues"
+	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^3.0.0",
 		"@sveltejs/kit": "^2.9.0",
