@@ -49,10 +49,12 @@
 	let {
 		children,
 		panel,
-		data = [],
+		data: _data = [],
 		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
 	}: Props = $props()
 	
+	const data = $derived(_data.toSorted())
+
 	const table: TableState<T> = $state({
 		columns: {},
 		panels: {},
@@ -281,6 +283,7 @@
 		display: grid;
 		overflow: auto;
 		scrollbar-width: thin;
+		background-color: hsla(0, 0%, 100%);
 	}
 
 	.statusbar {
