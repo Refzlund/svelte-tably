@@ -33,7 +33,7 @@
 
 <script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
 
-	import { getContext, setContext, type Snippet } from 'svelte'
+	import { getContext, setContext, untrack, type Snippet } from 'svelte'
 	import { type Column } from './Column.svelte'
 	import { PanelTween, type Panel } from './Panel.svelte'
 	import { fly } from 'svelte/transition'
@@ -54,6 +54,51 @@
 	}: Props = $props()
 	
 	const data = $derived(_data.toSorted())
+
+	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows', HTMLElement>
+
+
+	// * --- Virtualization --- *
+	let scrollTop = $state(0)
+	let viewportHeight = $state(0)
+
+	let _heightPerItem = 0
+	let _virtualBottom = 0
+	let _virtualTop = 0
+
+	let renderItemLength = $derived(Math.ceil(Math.max(30, viewportHeight / ((_heightPerItem || 24) / 3))))
+	let heightPerItem = $derived.by(() => {
+		const result = ((elements.rows?.scrollHeight || 0) - (
+			(isNaN(_virtualBottom) ? 0 : _virtualBottom))
+			+ (isNaN(_virtualTop) ? 0 : _virtualTop)
+		) / renderItemLength
+		_heightPerItem = result
+		return result
+	})
+	let virtualTop = $derived.by(() => {
+		let spacing = (renderItemLength/3) * heightPerItem
+		let scroll = scrollTop - spacing
+		let virtualTop = Math.max(scroll, 0)
+		virtualTop -= virtualTop % heightPerItem
+		_virtualTop = virtualTop
+		return virtualTop
+	})
+	let virtualBottom = $derived.by(() => {
+		const virtualBottom = (heightPerItem * data.length) - virtualTop
+		_virtualBottom = virtualBottom
+		return virtualBottom
+	})
+
+	/** The area of data that is rendered */
+	const area = $derived.by(() => {
+		const index = (virtualTop / heightPerItem) || 0
+		return data.slice(
+			index, 
+			index + renderItemLength
+		)
+	})
+	// * --- Virtualization --- *
+
 
 	const table: TableState<T> = $state({
 		columns: {},
@@ -99,7 +144,6 @@
 	// * --- *
 	
 	const panelTween = new PanelTween(() => panel)
-	const elements = $state({}) as Record<'headers' | 'statusbar', HTMLElement>
 
 	/** Order of columns */
 	const columns = $derived([...table.positions.sticky, ...table.positions.scroll].filter(key => !table.positions.hidden.includes(key)))
@@ -126,6 +170,8 @@
 
 	function onscroll(event: Event) {
 		const target = event.target as HTMLDivElement
+		scrollTop = target.scrollTop || 0
+		if(!elements.headers) return
 		elements.headers.scrollLeft = target.scrollLeft
 		elements.statusbar.scrollLeft = target.scrollLeft
 	}
@@ -142,22 +188,23 @@
 	<div class='headers' bind:this={elements.headers}>
 		{#each table.positions.sticky as column, i (column)}
 			{#if !table.positions.hidden.includes(column)}
-				<div class='column sticky' data-column="{column}" use:observe={column}>
+				<div class='column sticky' data-column="{column}" use:observe={column} class:border={i == table.positions.sticky.length - 1}>
 					{@render table.columns[column]?.header()}
 				</div>
 			{/if}
 		{/each}
 		{#each table.positions.scroll as column, i (column)}
 			{#if !table.positions.hidden.includes(column)}
-				<div class='column' use:observe={column}>
+				<div class='column' data-column="{column}" use:observe={column}>
 					{@render table.columns[column]?.header()}
 				</div>
 			{/if}
 		{/each}
 	</div>
 
-	<div class="rows" {onscroll}>
-		{#each data as item}
+	<div class='rows' {onscroll} bind:clientHeight={viewportHeight} bind:this={elements.rows}>
+		<div style='height: {virtualTop}px'></div>
+		{#each area as item, i (item)}
 			<div class='row'>
 				{#each table.positions.sticky as column, i (column)}
 					{#if !table.positions.hidden.includes(column)}
@@ -177,6 +224,7 @@
 				{/each}
 			</div>
 		{/each}
+		<div style='height: {virtualBottom}px'></div>
 	</div>
 	
 	<div class='statusbar' bind:this={elements.statusbar}>
@@ -226,16 +274,16 @@
 		position: sticky;
 		left: 0px;
 		/* right: 100px; */
-		background-color: white;
+		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 		z-index: 1;
 	}
 
 	.sticky.border {
-		border-right: 1px solid hsla(0, 0%, 90%);
+		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 	}
 
 	.headers > .column {
-		border-right: 1px solid hsla(0, 0%, 90%);
+		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		resize: horizontal;
 		overflow: hidden;
 		padding: var(--padding-y) 0;
@@ -259,7 +307,7 @@
 		grid-template-columns: auto min-content;
 		grid-template-rows: auto 1fr auto;
 
-		border: 1px solid hsla(0, 0%, 90%);
+		border: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		border-radius: .25rem;
 
 		max-height: 100%;
@@ -274,16 +322,15 @@
 
 	.headers > .column {
 		width: auto !important;
-		background-color: hsla(0, 0%, 100%);
-		border-bottom: 1px solid hsla(0, 0%, 90%);
+		background-color: var(--tably-bg, hsl(0, 0%, 100%));
+		border-bottom: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 	}
 
 	.rows {
 		grid-area: rows;
 		display: grid;
-		overflow: auto;
 		scrollbar-width: thin;
-		background-color: hsla(0, 0%, 100%);
+		overflow: auto;
 	}
 
 	.statusbar {
@@ -293,8 +340,8 @@
 	}
 
 	.statusbar > .column {
-		background-color: hsla(0, 0%, 99%);
-		border-top: 1px solid hsla(0, 0%, 90%);
+		background-color: var(--tably-bg-statusbar, hsl(0, 0%, 99%));
+		border-top: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		padding: calc(var(--padding-y) / 2) 0;
 	}
 
@@ -315,12 +362,12 @@
 		}
 	}
 
-	.row:nth-child(1) > * {
+	/* .row:nth-child(1) > * {
 		padding-top: calc(var(--padding-y) + var(--gap));
 	}
 	.row:nth-last-child(1) > * {
 		padding-bottom: calc(var(--padding-y) + var(--gap));
-	}
+	} */
 
 	.row > * {
 		padding: var(--gap) 0;
@@ -329,11 +376,10 @@
 	.panel {
 		position: relative;
 		grid-area: panel;
-		width: var(--panel);
 		height: 100%;
-		background-color: white;
+		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 
-		border-left: 1px solid hsla(0, 0%, 90%);
+		border-left: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 
 		> .panel-content {
 			position: absolute;

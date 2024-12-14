@@ -11,8 +11,9 @@ A high performant dynamic table
 - [x] Re-order columns
 - [x] Resize columns
 - [x] Statusbar
-- [x] Virtual data (for sorting/filtering)
+- [x] "Virtual" data (for sorting/filtering)
 - [x] Panels
+- [ ] Virtual elements
 - [ ] sorting
 - [ ] select
 - [ ] filtering

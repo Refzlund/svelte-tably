@@ -3,7 +3,7 @@
 
 	import {faker} from '@faker-js/faker'
 
-	const data = $state(Array(100).fill(null).map((_, i) => ({
+	const data = $state(Array(10000).fill(null).map((_, i) => ({
 		name: faker.person.fullName(),
 		age: Math.floor(Math.random() * 60) + 18,
 		email: faker.internet.email()
@@ -58,7 +58,7 @@
 		</Table.Virtual>
 		<Panel.Columns>
 			{#snippet children(table)}
-				<div style='min-width: 200px'>
+				<div style='width: clamp(0%, 200px, 200px);'>
 					<h3 style='margin: 0 0 1rem;'>Columns</h3>
 
 					<h4 style='margin: .25rem 0'>Sticky</h4>
