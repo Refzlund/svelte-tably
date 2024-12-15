@@ -46,6 +46,8 @@
 	import { sineInOut } from 'svelte/easing'
 
 	interface Props {
+		id: string
+
 		/** A darkened backdrop? */
 		backdrop?: boolean
 		children: Snippet<[table: TableState]>
@@ -54,20 +56,19 @@
 	let {
 		backdrop = true,
 		children,
-		...rest
+		id
 	}: Props = $props()
-	const key = (rest as unknown as { __key: string }).__key
-	
+
 	const panel: Panel = $state({
 		backdrop,
 		content: children
 	})
 
 	const table = getTableState()
-	table.panels[key] = panel
+	table.panels[id] = panel
 
 	onDestroy(() => {
-		delete table.panels[key]
+		delete table.panels[id]
 	})
 
 </script>

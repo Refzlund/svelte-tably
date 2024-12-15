@@ -30,7 +30,7 @@
 
 </script>
 
-<script lang='ts' generics='T extends Record<PropertyKey, any>, V'>
+<script lang='ts' generics='T extends Record<PropertyKey, any>, V = unknown'>
 
 	import { onDestroy, type Snippet } from 'svelte'
 	import { getTableState } from './Table.svelte'
@@ -39,6 +39,8 @@
 		header: Column<T, V>['header']
 		row: Column<T, V>['row']
 		statusbar?: Column<T, V>['statusbar']
+
+		id: string
 
 		// options
 		sticky?: boolean
@@ -49,17 +51,14 @@
 	}
 
 	let { 
-		header, row, statusbar, 
+		header, row, statusbar, id,
 		
 		sticky = false,
 		sort = false, 
 		show = true,
 
-		value, sorting,
-
-		...rest
+		value, sorting
 	}: Props = $props()
-	const key = (rest as unknown as { __key: string }).__key
 
 	const column: Column<T, V> = $state({
 		header,
@@ -77,10 +76,10 @@
 	})
 
 	const table = getTableState()
-	table.addColumn(key, column as Column)
+	table.addColumn(id, column as Column)
 
 	onDestroy(() => {
-		table.removeColumn(key)
+		table.removeColumn(id)
 	})
 
 </script>

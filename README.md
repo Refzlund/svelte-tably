@@ -23,52 +23,48 @@ A high performant dynamic table
 
 ### Usage Notes
 
-Simple example.
-
-Create a state for your data and a state for your active panel:
-
-```markdown
+```html
 <script lang='ts'>
-  import { Table } from '$lib/index.js'
+    import Table from 'svelte-tably'
 
-  const data = $state([
-    { name: 'John Doe', age: 30, email: 'johndoe@example.com' },
-    { name: 'Jane Doe', age: 25, email: 'janedoe@example.com' },
-  ])
+    const data = $state([
+        { name: 'John Doe', age: 30, email: 'johndoe@example.com' },
+        { name: 'Jane Doe', age: 25, email: 'janedoe@example.com' },
+    ])
+
+	let activePanel = $state('columns') as string | undefined
 </script>
 
-<Table {data}>
-  <Table.Name>
-    {#snippet header()}
-      Name
+<Table {data} panel={activePanel}>
+    {#snippet content({ Column, Panel, state, data })}
+        <Column id='name' sticky>
+		    {#snippet header()}
+			    Name
+			{/snippet}
+		    {#snippet row(row)}
+			    {row.name}
+			{/snippet}
+
+			<!-- Optional per column. -->
+		    {#snippet statusbar()}
+			    {data.length}
+			{/snippet}
+		</Column>
+		<Column ...>
+		   ...
+		</Column>
+		<!-- If you want to sort/filter a virtual value, that does not exist in the data -->
+		<Column id='virtual' value={row => row.age > 18}>
+			...
+			{#snippet row(row, virtual)}
+			    {virtual ? 'Adult' : 'Adolescent'}
+			{/snippet}
+			...
+		</Column>
+
+		<Panel id='columns'>
+			<!-- Anything you might like -->
+		</Panel>
     {/snippet}
-    {#snippet row(item)}
-      {item.name}
-    {/snippet}
-  </Table.Name>
-  <Table.Age>
-    {#snippet header()}
-      Age
-    {/snippet}
-    {#snippet row(item)}
-      {item.age}
-    {/snippet}
-  </Table.Age>
-  <Table.Email>
-    {#snippet header()}
-      Email
-    {/snippet}
-    {#snippet row(item)}
-      {item.email}
-    {/snippet}
-  </Table.Email>
 </Table>
 ```
-
-To create a column, simply add a new `<Table.ColumnName>` component inside the `<Table>` component. Replace `ColumnName` with the actual name of the column you want to create.
-
-Inside the column component, you need to define three snippets:
-
-* `header`: the content of the column header
-* `row`: the content of each row in the column
-* `statusbar`: (optional) the content of the status bar for the column

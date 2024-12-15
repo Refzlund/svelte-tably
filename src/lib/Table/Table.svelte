@@ -11,8 +11,8 @@
 <script module lang='ts'>
 	
 	export interface TableState<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> {
-		columns: Record<string, Column<T, unknown>>
-		panels: Record<string, Panel>
+		columns: Record<string, TColumn<T, unknown>>
+		panels: Record<string, TPanel>
 		sortby?: string
 		positions: {
 			sticky: string[]
@@ -21,7 +21,7 @@
 			toggle(key: string): void
 		}
 		readonly data: T[]
-		addColumn(key: string, options: Column<T, unknown>): void
+		addColumn(key: string, options: TColumn<T, unknown>): void
 		removeColumn(key: string): void
 	}
 
@@ -34,20 +34,22 @@
 <script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
 
 	import { getContext, setContext, untrack, type Snippet } from 'svelte'
-	import { type Column } from './Column.svelte'
-	import { PanelTween, type Panel } from './Panel.svelte'
+	import Column, { type Column as TColumn } from './Column.svelte'
+	import Panel, { PanelTween, type Panel as TPanel } from './Panel.svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 
 	interface Props {
-		children?: Snippet
+		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, state: TableState<T> }]>
+
 		panel?: string
 		data?: T[]
 		id?: string
 	}
 
 	let {
-		children,
+		content,
+
 		panel,
 		data: _data = [],
 		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
@@ -55,7 +57,7 @@
 	
 	const data = $derived(_data.toSorted())
 
-	const elements = $state({}) as Record<'headers' | 'statusbar' | 'content', HTMLElement>
+	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows', HTMLElement>
 
 
 	// * --- Virtualization --- *
@@ -66,12 +68,10 @@
 	let renderItemLength = $derived(Math.ceil(Math.max(30, viewportHeight / (_heightPerItem / 3))))
 
 	let heightPerItem = $derived.by(() => {
-		if(!elements.content)
+		data
+		if(!elements.rows)
 			return 8
-		const rows = elements.content.querySelectorAll('.row') as NodeListOf<HTMLDivElement>
-		const result = ((
-			rows[rows.length - 1].offsetTop - rows[0].offsetTop
-		) / rows.length)
+		const result = elements.rows.scrollHeight / elements.rows.childNodes.length
 		_heightPerItem = result
 		return result
 	})
@@ -80,17 +80,17 @@
 		let spacing = untrack(() => (renderItemLength/3)) * heightPerItem
 		let scroll = scrollTop - spacing
 		let virtualTop = Math.max(scroll, 0)
-		virtualTop -= virtualTop % untrack(() => heightPerItem)
+		virtualTop -= virtualTop % heightPerItem
 		return virtualTop
 	})
 	let virtualBottom = $derived.by(() => {
-		const virtualBottom = (untrack(() => heightPerItem) * data.length) - virtualTop
+		const virtualBottom = (heightPerItem * data.length) - virtualTop
 		return virtualBottom
 	})
 
 	/** The area of data that is rendered */
 	const area = $derived.by(() => {
-		const index = (virtualTop / untrack(() => heightPerItem)) || 0
+		const index = (virtualTop / heightPerItem) || 0
 		return data.slice(
 			index, 
 			index + untrack(() => renderItemLength)
@@ -217,10 +217,10 @@
 		{@render columnsSnippet((column) => table.columns[column]?.header, null, true)}
 	</div>
 
-	<div class='content' {onscroll} bind:clientHeight={viewportHeight} bind:this={elements.content}>
+	<div class='content' {onscroll} bind:clientHeight={viewportHeight}>
 		<div class='virtual top' style='height: {virtualTop}px'></div>
 		
-		<div class="rows">
+		<div class='rows' bind:this={elements.rows}>
 			{#each area as item, i (item)}
 				<div class='row'>
 					{@render columnsSnippet(
@@ -245,7 +245,7 @@
 	<div class='panel' style='width: {panelTween.current + 30}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
 		{#if panel && panel in table.panels}
 			<div 
-				class="panel-content"
+				class='panel-content'
 				bind:clientWidth={panelTween.width}
 				in:fly={{ x: 100, easing: sineInOut, duration:300 }}
 				out:fly={{ x:100, duration:200, easing: sineInOut }}
@@ -257,7 +257,7 @@
 </div>
 
 
-{@render children?.()}
+{@render content?.({ Column, Panel, state: table })}
 
 
 
@@ -298,9 +298,9 @@
 		height: 100%;
 
 		grid-template-areas: 
-			"headers     panel"
-			"rows        panel"
-			"statusbar   panel"
+			'headers     panel'
+			'rows        panel'
+			'statusbar   panel'
 		;
 
 		grid-template-columns: auto min-content;
