@@ -55,46 +55,45 @@
 	
 	const data = $derived(_data.toSorted())
 
-	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows', HTMLElement>
+	const elements = $state({}) as Record<'headers' | 'statusbar' | 'content', HTMLElement>
 
 
 	// * --- Virtualization --- *
 	let scrollTop = $state(0)
 	let viewportHeight = $state(0)
 
-	let _heightPerItem = 0
-	let _virtualBottom = 0
-	let _virtualTop = 0
+	let _heightPerItem = 24
+	let renderItemLength = $derived(Math.ceil(Math.max(30, viewportHeight / (_heightPerItem / 3))))
 
-	let renderItemLength = $derived(Math.ceil(Math.max(30, viewportHeight / ((_heightPerItem || 24) / 3))))
 	let heightPerItem = $derived.by(() => {
-		const result = ((elements.rows?.scrollHeight || 0) - (
-			(isNaN(_virtualBottom) ? 0 : _virtualBottom))
-			+ (isNaN(_virtualTop) ? 0 : _virtualTop)
-		) / renderItemLength
+		if(!elements.content)
+			return 8
+		const rows = elements.content.querySelectorAll('.row') as NodeListOf<HTMLDivElement>
+		const result = ((
+			rows[rows.length - 1].offsetTop - rows[0].offsetTop
+		) / rows.length)
 		_heightPerItem = result
 		return result
 	})
+
 	let virtualTop = $derived.by(() => {
-		let spacing = (renderItemLength/3) * heightPerItem
+		let spacing = untrack(() => (renderItemLength/3)) * heightPerItem
 		let scroll = scrollTop - spacing
 		let virtualTop = Math.max(scroll, 0)
-		virtualTop -= virtualTop % heightPerItem
-		_virtualTop = virtualTop
+		virtualTop -= virtualTop % untrack(() => heightPerItem)
 		return virtualTop
 	})
 	let virtualBottom = $derived.by(() => {
-		const virtualBottom = (heightPerItem * data.length) - virtualTop
-		_virtualBottom = virtualBottom
+		const virtualBottom = (untrack(() => heightPerItem) * data.length) - virtualTop
 		return virtualBottom
 	})
 
 	/** The area of data that is rendered */
 	const area = $derived.by(() => {
-		const index = (virtualTop / heightPerItem) || 0
+		const index = (virtualTop / untrack(() => heightPerItem)) || 0
 		return data.slice(
 			index, 
-			index + renderItemLength
+			index + untrack(() => renderItemLength)
 		)
 	})
 	// * --- Virtualization --- *
@@ -153,7 +152,7 @@
 
 	/** grid-template-columns for widths */
 	const style = $derived(`
-		#${id} > .headers, #${id} > .rows > .row, #${id} > .statusbar {
+		#${id} > .headers, #${id} > .content > .rows > .row, #${id} > .statusbar, #${id} > .content > .virtual.bottom {
 			grid-template-columns: ${columns.map((key, i, arr) => i === arr.length - 1 ? `minmax(${widths[key] || 150}px, 1fr)` : `${widths[key] || 150}px`).join(' ')};
 		}
 	`)
@@ -163,14 +162,18 @@
 		widths[target.getAttribute('data-column')!] = parseFloat(target.style.width)
 	})
 
-	function observe(node: HTMLDivElement, column: string) {
+	function observe(node: HTMLDivElement, isHeader = false) {
+		if(!isHeader) return
 		observer?.observe(node, {attributes: true})
 		return { destroy: () => observer?.disconnect() }
 	}
 
 	function onscroll(event: Event) {
 		const target = event.target as HTMLDivElement
-		scrollTop = target.scrollTop || 0
+		if(target.scrollTop !== scrollTop) {
+			scrollTop = target.scrollTop || 0
+		}
+		
 		if(!elements.headers) return
 		elements.headers.scrollLeft = target.scrollLeft
 		elements.statusbar.scrollLeft = target.scrollLeft
@@ -183,68 +186,63 @@
 	{@html `<style>${style}</style>`}
 </svelte:head>
 
+{#snippet columnsSnippet(
+	renderable: (column: string) => Snippet<[arg0?: any, arg1?: any, arg2?: any, arg3?: any]> | undefined, 
+	arg: null | ((column: string) => any[]) = null,
+	isHeader = false
+)}
+	{#each table.positions.sticky as column, i (column)}
+		{#if !table.positions.hidden.includes(column)}
+			{@const args = arg ? arg(column) : []}
+			{@const props = isHeader ? { 'data-column': column } : {}}
+			<div class='column sticky' {...props} use:observe={isHeader} class:border={i == table.positions.sticky.length - 1}>
+				{@render renderable(column)?.(args[0], args[1], args[2], args[3])}
+			</div>
+		{/if}
+	{/each}
+	{#each table.positions.scroll as column, i (column)}
+		{#if !table.positions.hidden.includes(column)}
+			{@const args = arg ? arg(column) : []}
+			{@const props = isHeader ? { 'data-column': column } : {}}
+			<div class='column' {...props} use:observe={isHeader}>
+				{@render renderable(column)?.(args[0], args[1], args[2], args[3])}
+			</div>
+		{/if}
+	{/each}
+{/snippet}
+
 <div id={id} class='table'>
 
 	<div class='headers' bind:this={elements.headers}>
-		{#each table.positions.sticky as column, i (column)}
-			{#if !table.positions.hidden.includes(column)}
-				<div class='column sticky' data-column="{column}" use:observe={column} class:border={i == table.positions.sticky.length - 1}>
-					{@render table.columns[column]?.header()}
-				</div>
-			{/if}
-		{/each}
-		{#each table.positions.scroll as column, i (column)}
-			{#if !table.positions.hidden.includes(column)}
-				<div class='column' data-column="{column}" use:observe={column}>
-					{@render table.columns[column]?.header()}
-				</div>
-			{/if}
-		{/each}
+		{@render columnsSnippet((column) => table.columns[column]?.header, null, true)}
 	</div>
 
-	<div class='rows' {onscroll} bind:clientHeight={viewportHeight} bind:this={elements.rows}>
-		<div style='height: {virtualTop}px'></div>
-		{#each area as item, i (item)}
-			<div class='row'>
-				{#each table.positions.sticky as column, i (column)}
-					{#if !table.positions.hidden.includes(column)}
-						{@const col = table.columns[column]}
-						<div class='column sticky' class:border={i == table.positions.sticky.length - 1}>
-							{@render col.row(item, col.options.value ? col.options.value(item) : undefined)}
-						</div>
-					{/if}
-				{/each}
-				{#each table.positions.scroll as column, i (column)}
-					{#if !table.positions.hidden.includes(column)}
-						{@const col = table.columns[column]}
-						<div class='column'>
-							{@render col.row(item, col.options.value ? col.options.value(item) : undefined)}
-						</div>
-					{/if}
-				{/each}
-			</div>
-		{/each}
-		<div style='height: {virtualBottom}px'></div>
+	<div class='content' {onscroll} bind:clientHeight={viewportHeight} bind:this={elements.content}>
+		<div class='virtual top' style='height: {virtualTop}px'></div>
+		
+		<div class="rows">
+			{#each area as item, i (item)}
+				<div class='row'>
+					{@render columnsSnippet(
+						(column) => table.columns[column]!.row,
+						(column) => {
+							const col = table.columns[column]!
+							return [item, col.options.value ? col.options.value(item) : undefined]
+						}
+					)}
+				</div>
+			{/each}
+		</div>
+		<div class='virtual bottom' style='height: {virtualBottom}px'>
+			{@render columnsSnippet(() => undefined)}
+		</div>
 	</div>
 	
 	<div class='statusbar' bind:this={elements.statusbar}>
-		{#each table.positions.sticky as column, i (column)}
-			{#if !table.positions.hidden.includes(column)}
-				<div class='column sticky' class:border={i == table.positions.sticky.length - 1}>
-					{@render table.columns[column]?.statusbar?.(data)}
-				</div>
-			{/if}
-		{/each}
-		{#each table.positions.scroll as column, i (column)}
-			{#if !table.positions.hidden.includes(column)}
-				<div class='column'>
-					{@render table.columns[column]?.statusbar?.(data)}
-				</div>
-			{/if}
-		{/each}
+		{@render columnsSnippet((column) => table.columns[column]?.statusbar, () => [data])}
 	</div>
 
-	<div class='panel' style='width: {panelTween.current}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
+	<div class='panel' style='width: {panelTween.current + 30}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
 		{#if panel && panel in table.panels}
 			<div 
 				class="panel-content"
@@ -297,6 +295,7 @@
 		--header-height: 2.5rem;
 
 		display: grid;
+		height: 100%;
 
 		grid-template-areas: 
 			"headers     panel"
@@ -317,7 +316,6 @@
 		grid-area: headers;
 		z-index: 2;
 		overflow: hidden;
-		padding-right: 1rem;
 	}
 
 	.headers > .column {
@@ -326,17 +324,25 @@
 		border-bottom: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 	}
 
-	.rows {
+	.content {
 		grid-area: rows;
 		display: grid;
 		scrollbar-width: thin;
 		overflow: auto;
+		height: 100%;
+		grid-template-rows: auto auto 1fr;
+
+		> .rows, > .virtual.bottom {
+			display: grid;
+		}
+		> .virtual.bottom {
+			min-height: 100%;
+		}
 	}
 
 	.statusbar {
 		grid-area: statusbar;
 		overflow: hidden;
-		padding-right: 1rem;
 	}
 
 	.statusbar > .column {
@@ -380,14 +386,16 @@
 		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 
 		border-left: 1px solid var(--tably-border, hsl(0, 0%, 90%));
+		scrollbar-gutter: stable both-edges;
+		scrollbar-width: thin;
 
 		> .panel-content {
 			position: absolute;
 			top: 0;
 			right: 0;
 			width: min-content;
-			overflow: hidden;
-			padding: var(--padding-y) var(--padding-x);
+			overflow: auto;
+			padding: var(--padding-y) 0;
 		}
 	}
 

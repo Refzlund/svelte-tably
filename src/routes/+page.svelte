@@ -3,11 +3,15 @@
 
 	import {faker} from '@faker-js/faker'
 
-	const data = $state(Array(10000).fill(null).map((_, i) => ({
-		name: faker.person.fullName(),
-		age: Math.floor(Math.random() * 60) + 18,
-		email: faker.internet.email()
-	})))
+	function createData(size: number) {
+		return Array(size).fill(null).map((_, i) => ({
+			name: faker.person.fullName(),
+			age: Math.floor(Math.random() * 60) + 18,
+			email: faker.internet.email()
+		}))
+	} 
+
+	let data = $state(createData(500))
 
 	let panel = $state('Columns') as undefined | string
 
@@ -16,8 +20,18 @@
 
 <button style='margin: 1rem;' onclick={() => panel = panel ? undefined : 'Columns'}>Toggle panel</button>
 
-<div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: 600px; height: 400px;'>
+<button onclick={() => data = createData(5)}>5</button>
+<button onclick={() => data = createData(500)}>500</button>
+<button onclick={() => data = createData(5000)}>5000</button>
+<button onclick={() => data = createData(50000)}>50000</button>
+
+<div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: clamp(0px, 1200px, 95vw); height: clamp(0px, 800px, 80vh);'>
 	<Table {data} {panel}>
+		<!-- 
+		{#snippet content({ Column, Panel, table, sort })}
+			<Column.Name sticky sort sorting={sort.localeCompare(item => item.name)} sorting={(a, b) => a.name.localeCompare(b.name)}>
+			<Column id='Name' ...> <--- Is better, restrict to this.
+		-->
 		<Table.Name sticky sort>
 			{#snippet header()}
 				Name

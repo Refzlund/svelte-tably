@@ -13,7 +13,7 @@ A high performant dynamic table
 - [x] Statusbar
 - [x] "Virtual" data (for sorting/filtering)
 - [x] Panels
-- [ ] Virtual elements
+- [x] Virtual elements
 - [ ] sorting
 - [ ] select
 - [ ] filtering
