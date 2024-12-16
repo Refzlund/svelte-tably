@@ -21,6 +21,8 @@
 			toggle(key: string): void
 		}
 		readonly data: T[]
+		/** Rows become anchors */
+		readonly href?: (item: T) => string
 		addColumn(key: string, options: TColumn<T, unknown>): void
 		removeColumn(key: string): void
 	}
@@ -45,6 +47,7 @@
 		panel?: string
 		data?: T[]
 		id?: string
+		href?: (item: T) => string
 	}
 
 	let {
@@ -52,7 +55,8 @@
 
 		panel = $bindable(),
 		data: _data = [],
-		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
+		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''),
+		href
 	}: Props = $props()
 	
 	const data = $derived(_data.toSorted())
@@ -110,6 +114,9 @@
 				else
 					table.positions.hidden.push(key)
 			}
+		},
+		get href() {
+			return href
 		},
 		get data() {
 			return data
@@ -232,8 +239,11 @@
 		
 		<div class='rows' bind:this={elements.rows}>
 			{#each area as item, i (item)}
-				<div
+				{@const props = table.href ? { href: table.href(item) } : {}}
+				<!-- note: <svelte:element> will break the virtualization for some reason -->
+				<a
 					class='row'
+					{...props}
 					onpointerenter={() => hoveredRow = item}
 					onpointerleave={() => hoveredRow = null}
 				>
@@ -248,7 +258,7 @@
 							}]
 						}
 					)}
-				</div>
+				</a>
 			{/each}
 		</div>
 		<div class='virtual bottom' style='height: {virtualBottom}px'>
@@ -287,7 +297,12 @@
 
 
 <!---------------------------------------------------->
-<style lang='postcss'>
+<style>
+
+	a {
+		color: inherit;
+		text-decoration: inherit;
+	}
 	
 	.table, .table * {
 		box-sizing: border-box;

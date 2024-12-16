@@ -15,22 +15,38 @@
 
 	let panel = $state('columns') as undefined | string
 
+	let href = $state(undefined) as undefined | ((item: typeof data[number]) => string)
+	$inspect(href)
 </script>
 <!---------------------------------------------------->
 
-<button style='margin: 1rem;' onclick={() => panel = panel ? undefined : 'columns'}>Toggle panel</button>
+<div style='margin: 1rem;' >
+	<button onclick={() => panel = panel ? undefined : 'columns'}>Toggle panel</button>
 
-<button onclick={() => data = createData(5)}>5</button>
-<button onclick={() => data = createData(50)}>50</button>
-<button onclick={() => data = createData(500)}>500</button>
-<button onclick={() => data = createData(5000)}>5000</button>
-<button onclick={() => data = createData(50000)}>50000</button>
+	<button onclick={() => data = createData(5)}>5</button>
+	<button onclick={() => data = createData(50)}>50</button>
+	<button onclick={() => data = createData(500)}>500</button>
+	<button onclick={() => data = createData(5000)}>5000</button>
+	<button onclick={() => data = createData(50000)}>50000</button>
+</div>
+
+
+<div style='margin: 1rem;'>
+	<button onclick={() => {
+		href = href ? undefined : (item) => `?name=${item.name}`
+	}}>{href ? 'disable href rows' : 'enable href rows'}</button>
+</div>
 
 <div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: clamp(0px, 1200px, 95vw); height: clamp(0px, 800px, 80vh);'>
-	<Table {data} bind:panel>
-	<!-- <Table href={item => `?id={${item.id}}`}>  left-clickable rows  -->
+	<Table {data} bind:panel {href}>
 		{#snippet content({ Column, Panel, state, data })}
 			<Column id='id' sticky width={100}>
+				{#snippet header(header)}
+					{#if !header}
+						<!-- Only show when rendered elsewhere -->
+						ID
+					{/if}
+				{/snippet}
 				{#snippet row(item, row)}
 					<span class:hovered={row.isHovered}>{row.index}</span>
 				{/snippet}
