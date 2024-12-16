@@ -13,7 +13,7 @@
 	export interface Column<T = unknown, V = unknown> {
 		header: Snippet
 		row: Snippet<[item: T, value?: V]>
-		statusbar?: Snippet<[data: T[]]>
+		statusbar?: Snippet
 		
 		/** Default options for initial table */
 		defaults: {

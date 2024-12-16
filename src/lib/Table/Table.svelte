@@ -40,7 +40,7 @@
 	import { sineInOut } from 'svelte/easing'
 
 	interface Props {
-		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, state: TableState<T> }]>
+		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, readonly state: TableState<T>, readonly data: T[] }]>
 
 		panel?: string
 		data?: T[]
@@ -50,7 +50,7 @@
 	let {
 		content,
 
-		panel,
+		panel = $bindable(),
 		data: _data = [],
 		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
 	}: Props = $props()
@@ -142,7 +142,7 @@
 
 	// * --- *
 	
-	const panelTween = new PanelTween(() => panel)
+	const panelTween = new PanelTween(() => panel, 24)
 
 	/** Order of columns */
 	const columns = $derived([...table.positions.sticky, ...table.positions.scroll].filter(key => !table.positions.hidden.includes(key)))
@@ -187,7 +187,7 @@
 </svelte:head>
 
 {#snippet columnsSnippet(
-	renderable: (column: string) => Snippet<[arg0?: any, arg1?: any, arg2?: any, arg3?: any]> | undefined, 
+	renderable: (column: string) => Snippet<[arg0?: any, arg1?: any]> | undefined, 
 	arg: null | ((column: string) => any[]) = null,
 	isHeader = false
 )}
@@ -196,7 +196,7 @@
 			{@const args = arg ? arg(column) : []}
 			{@const props = isHeader ? { 'data-column': column } : {}}
 			<div class='column sticky' {...props} use:observe={isHeader} class:border={i == table.positions.sticky.length - 1}>
-				{@render renderable(column)?.(args[0], args[1], args[2], args[3])}
+				{@render renderable(column)?.(args[0], args[1])}
 			</div>
 		{/if}
 	{/each}
@@ -205,13 +205,13 @@
 			{@const args = arg ? arg(column) : []}
 			{@const props = isHeader ? { 'data-column': column } : {}}
 			<div class='column' {...props} use:observe={isHeader}>
-				{@render renderable(column)?.(args[0], args[1], args[2], args[3])}
+				{@render renderable(column)?.(args[0], args[1])}
 			</div>
 		{/if}
 	{/each}
 {/snippet}
 
-<div id={id} class='table'>
+<div id={id} class='table svelte-tably'>
 
 	<div class='headers' bind:this={elements.headers}>
 		{@render columnsSnippet((column) => table.columns[column]?.header, null, true)}
@@ -239,10 +239,10 @@
 	</div>
 	
 	<div class='statusbar' bind:this={elements.statusbar}>
-		{@render columnsSnippet((column) => table.columns[column]?.statusbar, () => [data])}
+		{@render columnsSnippet((column) => table.columns[column]?.statusbar)}
 	</div>
 
-	<div class='panel' style='width: {panelTween.current + 30}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
+	<div class='panel' style='width: {(panelTween.current)}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
 		{#if panel && panel in table.panels}
 			<div 
 				class='panel-content'
@@ -250,14 +250,21 @@
 				in:fly={{ x: 100, easing: sineInOut, duration:300 }}
 				out:fly={{ x:100, duration:200, easing: sineInOut }}
 			>
-				{@render table.panels[panel].content(table as TableState)}
+				{@render table.panels[panel].content()}
 			</div>
 		{/if}
 	</div>
+	<button 
+		class='backdrop' 
+		aria-label='Panel backdrop'
+		tabindex='-1'
+		aria-hidden={panel && table.panels[panel]?.backdrop ? false : true}
+		onclick={() => panel = undefined}
+	></button>
 </div>
 
 
-{@render content?.({ Column, Panel, state: table })}
+{@render content?.({ Column, Panel, get state() { return table }, get data() { return data } })}
 
 
 
@@ -266,13 +273,47 @@
 	
 	.table, .table * {
 		box-sizing: border-box;
+		background-color: inherit;
+	}
+
+	.backdrop {
+		position: absolute;
+		left: 0px;
+		top: 0px;
+		bottom: 0px;
+		right: 0px;
+		background-color: hsla(0, 0%, 0%, .3);
+		z-index: 3;
+		opacity: 1;
+		transition: .15s ease;
+		border: none;
+		outline: none;
+		cursor: pointer;
+
+		&[aria-hidden='true'] {
+			opacity: 0;
+			pointer-events: none;
+		}
+	}
+
+	.headers, .statusbar {
+		/* So that the scrollbar doesn't cause the headers/statusbar to shift */
+		padding-right: 11px;
+	}
+
+	.table {
+		color: var(--tably-color, hsl(0, 0%, 0%));
+		background-color: var(--tably-bg, hsl(0, 0%, 100%));
+
+		--tably-padding-x: 1rem;
+		--tably-padding-y: .5rem;
+		--tably-radius: .25rem;
 	}
 
 	.sticky {
 		position: sticky;
 		left: 0px;
 		/* right: 100px; */
-		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 		z-index: 1;
 	}
 
@@ -284,18 +325,13 @@
 		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		resize: horizontal;
 		overflow: hidden;
-		padding: var(--padding-y) 0;
+		padding: var(--tably-padding-y) 0;
 	}
 	
 	.table {
-		--panel: 250px;
-		--padding-x: 1rem;
-		--padding-y: .5rem;
-		--gap: .25rem;
-		--header-height: 2.5rem;
-
 		display: grid;
 		height: 100%;
+		position: relative;
 
 		grid-template-areas: 
 			'headers     panel'
@@ -307,7 +343,7 @@
 		grid-template-rows: auto 1fr auto;
 
 		border: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		border-radius: .25rem;
+		border-radius: var(--tably-radius, .25rem);
 
 		max-height: 100%;
 	}
@@ -320,7 +356,6 @@
 
 	.headers > .column {
 		width: auto !important;
-		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 		border-bottom: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 	}
 
@@ -346,9 +381,8 @@
 	}
 
 	.statusbar > .column {
-		background-color: var(--tably-bg-statusbar, hsl(0, 0%, 99%));
 		border-top: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		padding: calc(var(--padding-y) / 2) 0;
+		padding: calc(var(--tably-padding-y) / 2) 0;
 	}
 
 	.headers, .row, .statusbar {
@@ -358,36 +392,36 @@
 
 		& > .column {
 			display: flex;
-			padding-left: var(--padding-x);
+			padding-left: var(--tably-padding-x);
 			overflow: hidden;
 		}
 
 		& > *:last-child {
 			width: 100%;
-			padding-right: var(--padding-x);
+			padding-right: var(--tably-padding-x);
 		}
 	}
 
-	/* .row:nth-child(1) > * {
-		padding-top: calc(var(--padding-y) + var(--gap));
+	.row:first-child > * {
+		padding-top: calc(var(--tably-padding-y) + calc(var(--tably-padding-y) / 2));
 	}
-	.row:nth-last-child(1) > * {
-		padding-bottom: calc(var(--padding-y) + var(--gap));
-	} */
+	.row:last-child > * {
+		padding-bottom: calc(var(--tably-padding-y) + calc(var(--tably-padding-y) / 2));
+	}
 
 	.row > * {
-		padding: var(--gap) 0;
+		padding: calc(var(--tably-padding-y) / 2) 0;
 	}
 
 	.panel {
 		position: relative;
 		grid-area: panel;
 		height: 100%;
-		background-color: var(--tably-bg, hsl(0, 0%, 100%));
 
 		border-left: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		scrollbar-gutter: stable both-edges;
 		scrollbar-width: thin;
+		z-index: 4;
 
 		> .panel-content {
 			position: absolute;
@@ -395,7 +429,7 @@
 			right: 0;
 			width: min-content;
 			overflow: auto;
-			padding: var(--padding-y) 0;
+			padding: var(--tably-padding-y) 0;
 		}
 	}
 

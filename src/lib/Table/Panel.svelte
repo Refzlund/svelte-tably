@@ -13,7 +13,7 @@
 	export interface Panel {
 		/** A darkened backdrop? */
 		backdrop: boolean
-		content: Snippet<[table: TableState]>
+		content: Snippet
 	}
 
 	export class PanelTween {
@@ -29,9 +29,9 @@
 			this.#tween.set(value).then(() => this.transitioning = false)
 		}
 
-		constructor(cb: () => string | undefined) {
+		constructor(cb: () => string | undefined, added = 0) {
 			$effect.pre(() => {
-				this.target = cb() ? this.width : 0
+				this.target = cb() ? this.width + added : 0
 			})
 		}
 	}
@@ -50,7 +50,7 @@
 
 		/** A darkened backdrop? */
 		backdrop?: boolean
-		children: Snippet<[table: TableState]>
+		children: Snippet
 	}
 
 	let {

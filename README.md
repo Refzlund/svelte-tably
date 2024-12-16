@@ -32,39 +32,59 @@ A high performant dynamic table
         { name: 'Jane Doe', age: 25, email: 'janedoe@example.com' },
     ])
 
-	let activePanel = $state('columns') as string | undefined
+    let activePanel = $state('columns') as string | undefined
 </script>
 
 <Table {data} panel={activePanel}>
     {#snippet content({ Column, Panel, state, data })}
         <Column id='name' sticky>
-		    {#snippet header()}
-			    Name
-			{/snippet}
-		    {#snippet row(row)}
-			    {row.name}
-			{/snippet}
+            {#snippet header()}
+                Name
+            {/snippet}
+            {#snippet row(row)}
+                {row.name}
+            {/snippet}
 
-			<!-- Optional per column. -->
-		    {#snippet statusbar()}
-			    {data.length}
-			{/snippet}
-		</Column>
-		<Column ...>
-		   ...
-		</Column>
-		<!-- If you want to sort/filter a virtual value, that does not exist in the data -->
-		<Column id='virtual' value={row => row.age > 18}>
-			...
-			{#snippet row(row, virtual)}
-			    {virtual ? 'Adult' : 'Adolescent'}
-			{/snippet}
-			...
-		</Column>
+            <!-- Optional per column. -->
+            {#snippet statusbar()}
+                {data.length}
+            {/snippet}
+        </Column>
+        <Column ...>
+           ...
+        </Column>
+        <!-- If you want to sort/filter a virtual value, that does not exist in the data -->
+        <Column id='virtual' value={row => row.age > 18}>
+            ...
+            {#snippet row(row, virtual)}
+                {virtual ? 'Adult' : 'Adolescent'}
+            {/snippet}
+            ...
+        </Column>
 
-		<Panel id='columns'>
-			<!-- Anything you might like -->
-		</Panel>
+        <Panel id='columns'>
+            <!-- Anything you might like -->
+        </Panel>
+        <Panel ...>
+            ...
+        </Panel>
     {/snippet}
 </Table>
 ```
+
+#### Styling
+
+For quick styling
+
+| CSS Variable | Description | Default |
+| - | - | - |
+| --tably-bg | background-color | `hsl(0, 0%, 100%)` |
+| --tably-color | color | `hsl(0, 0%, 0%)` |
+| --tably-border | border | `hsl(0, 0%, 90%)` |
+| --tably-padding-y | Padding above/below each column | `.5rem` |
+| --tably-padding-x | Padding left of each column | `1rem` |
+| --tably-radius | Table radius | `.25rem` |
+
+Advanced styling can be done via `:global .svelte-tably`
+
+

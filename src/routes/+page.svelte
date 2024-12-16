@@ -1,7 +1,5 @@
 <script lang='ts'>
-	import Table from '$lib/index.js'
-	import Column from '$lib/Table/Column.svelte'
-	import Panel from '$lib/Table/Panel.svelte'
+	import Table from 'svelte-tably'
 
 	import {faker} from '@faker-js/faker'
 
@@ -28,8 +26,8 @@
 <button onclick={() => data = createData(50000)}>50000</button>
 
 <div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: clamp(0px, 1200px, 95vw); height: clamp(0px, 800px, 80vh);'>
-	<Table {data} {panel}>
-		{#snippet content({ Column, Panel, state })}
+	<Table {data} bind:panel>
+		{#snippet content({ Column, Panel, state, data })}
 			<Column id='name' sticky sort>
 				{#snippet header()}
 					Name
@@ -37,7 +35,7 @@
 				{#snippet row(item)}
 					{item.name}
 				{/snippet}
-				{#snippet statusbar(data)}
+				{#snippet statusbar()}
 					<small>{data.length} people</small>
 				{/snippet}
 			</Column>
@@ -48,7 +46,7 @@
 				{#snippet row(item)}
 					{item.age}
 				{/snippet}
-				{#snippet statusbar(data)}
+				{#snippet statusbar()}
 					<small>{data.reduce((a, b) => a + b.age, 0) / data.length} avg. age</small>
 				{/snippet}
 			</Column>
