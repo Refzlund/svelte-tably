@@ -11,7 +11,7 @@
 <script module lang='ts'>
 	
 	export interface Column<T = unknown, V = unknown> {
-		header: Snippet<[
+		header?: Snippet<[
 			/** 
 			 * Is true when displaying in the header,
 			 * so additional content can be shown if desired,
@@ -19,7 +19,11 @@
 			*/
 			header?: boolean
 		]>
-		row: Snippet<[item: T, value?: V]>
+		row: Snippet<[item: T, row: {
+			readonly value: V
+			readonly isHovered: boolean
+			readonly index: number
+		}]>
 		statusbar?: Snippet
 		
 		/** Default options for initial table */
@@ -27,6 +31,7 @@
 			sticky?: boolean
 			sort?: boolean
 			show?: boolean
+			width?: number
 		}
 		/** More options */
 		options: {
@@ -43,7 +48,7 @@
 	import { getTableState } from './Table.svelte'
 
 	interface Props {
-		header: Column<T, V>['header']
+		header?: Column<T, V>['header']
 		row: Column<T, V>['row']
 		statusbar?: Column<T, V>['statusbar']
 
@@ -53,6 +58,7 @@
 		sticky?: boolean
 		sort?: boolean
 		show?: boolean
+		width?: number
 		value?: Column<T, V>['options']['value']
 		sorting?: Column<T, V>['options']['sorting']
 	}
@@ -63,6 +69,7 @@
 		sticky = false,
 		sort = false, 
 		show = true,
+		width,
 
 		value, sorting
 	}: Props = $props()
@@ -74,7 +81,8 @@
 		defaults: {
 			sticky,
 			sort,
-			show
+			show,
+			width
 		},
 		options: {
 			value,

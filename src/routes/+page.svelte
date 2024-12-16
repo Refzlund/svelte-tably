@@ -30,15 +30,16 @@
 	<Table {data} bind:panel>
 	<!-- <Table href={item => `?id={${item.id}}`}>  left-clickable rows  -->
 		{#snippet content({ Column, Panel, state, data })}
+			<Column id='id' sticky width={100}>
+				{#snippet row(item, row)}
+					<span class:hovered={row.isHovered}>{row.index}</span>
+				{/snippet}
+			</Column>
 			<Column id='name' sticky sort>
 				{#snippet header()}
 					Name
 				{/snippet}
-				{#snippet row(item)}
-					<!--
 				{#snippet row(item, row)}
-					<span class:hovered={row.isHovered}>
-					-->
 					{item.name}
 				{/snippet}
 				{#snippet statusbar()}
@@ -68,8 +69,8 @@
 				{#snippet header()}
 					Maturity
 				{/snippet}
-				{#snippet row(row, virtual)}
-					{virtual ? 'Adult' : 'Adolescent'}
+				{#snippet row(item, row)}
+					{row.value ? 'Adult' : 'Adolescent'}
 				{/snippet}
 			</Column>
 
@@ -80,7 +81,7 @@
 					<h4 style='margin: .25rem 0'>Sticky</h4>
 					{#each state.positions.sticky as column}
 						<div class='order'>
-							<span>{@render state.columns[column]?.header()}</span>
+							<span>{@render state.columns[column]?.header?.()}</span>
 							<button onclick={() => state.positions.toggle(column)}>
 								{#if state.positions.hidden.includes(column)}
 									Show
@@ -94,7 +95,7 @@
 					<h4 style='margin: 1rem 0 .25rem'>Scroll</h4>
 					{#each state.positions.scroll as column}
 						<div class='order'>
-							<span>{@render state.columns[column]?.header()}</span>
+							<span>{@render state.columns[column]?.header?.()}</span>
 							<button onclick={() => state.positions.toggle(column)}>
 								{#if state.positions.hidden.includes(column)}
 									Show
@@ -113,6 +114,15 @@
 
 <!---------------------------------------------------->
 <style>
+
+	.hovered {
+		color: skyblue;
+		font-weight: bold;
+
+		&::after {
+			content: ' 🦒';
+		}
+	}
 	
 	.container {
 		padding: 1rem;

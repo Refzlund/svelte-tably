@@ -81,6 +81,7 @@ For quick styling
 | --tably-bg | background-color | `hsl(0, 0%, 100%)` |
 | --tably-color | color | `hsl(0, 0%, 0%)` |
 | --tably-border | border | `hsl(0, 0%, 90%)` |
+| --tably-statusbar | background-color for the statusbar | `hsl(0, 0%, 98%)` |
 | --tably-padding-y | Padding above/below each column | `.5rem` |
 | --tably-padding-x | Padding left of each column | `1rem` |
 | --tably-radius | Table radius | `.25rem` |

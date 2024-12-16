@@ -64,19 +64,17 @@
 	let scrollTop = $state(0)
 	let viewportHeight = $state(0)
 
-	let _heightPerItem = 24
-	let renderItemLength = $derived(Math.ceil(Math.max(30, viewportHeight / (_heightPerItem / 2))))
-
 	let heightPerItem = $derived.by(() => {
 		data
 		if(!elements.rows)
 			return 8
 		const result = elements.rows.scrollHeight / elements.rows.childNodes.length
-		_heightPerItem = result
 		return result
 	})
 
-	const spacing = () => untrack(() => (renderItemLength/3.85)) * heightPerItem
+	let renderItemLength = $derived(Math.ceil(Math.max(30, (viewportHeight / heightPerItem) * 2)))
+
+	const spacing = () => viewportHeight / 2
 	let virtualTop = $derived.by(() => {
 		let scroll = scrollTop - spacing()
 		let virtualTop = Math.max(scroll, 0)
@@ -84,7 +82,7 @@
 		return virtualTop
 	})
 	let virtualBottom = $derived.by(() => {
-		const virtualBottom = (heightPerItem * data.length) - virtualTop - spacing() * 3.85
+		const virtualBottom = (heightPerItem * data.length) - virtualTop - spacing() * 4
 		return Math.max(virtualBottom, 0)
 	})
 	/** The area of data that is rendered */
@@ -144,6 +142,8 @@
 	
 	const panelTween = new PanelTween(() => panel, 24)
 
+	let hoveredRow: T | null = $state(null)
+
 	/** Order of columns */
 	const columns = $derived([...table.positions.sticky, ...table.positions.scroll].filter(key => !table.positions.hidden.includes(key)))
 
@@ -152,9 +152,19 @@
 
 	/** grid-template-columns for widths */
 	const style = $derived(`
-		#${id} > .headers, #${id} > .content > .rows > .row, #${id} > .statusbar, #${id} > .content > .virtual.bottom {
-			grid-template-columns: ${columns.map((key, i, arr) => i === arr.length - 1 ? `minmax(${columnWidths[key] || 150}px, 1fr)` : `${columnWidths[key] || 150}px`).join(' ')};
-		}
+	#${id} > .headers,
+	#${id} > .content > .rows > .row,
+	#${id} > .statusbar,
+	#${id} > .content > .virtual.bottom {
+		grid-template-columns: ${
+			columns.map((key, i, arr) => {
+				const width = columnWidths[key] || table.columns[key]?.defaults.width || 150
+				if(i === arr.length - 1)
+					return `minmax(${width}px, 1fr)`
+				return `${width}px`
+			}).join(' ')
+		};
+	}
 	`)
 
 	const columnWidthObserver = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(mutations => {
@@ -222,12 +232,20 @@
 		
 		<div class='rows' bind:this={elements.rows}>
 			{#each area as item, i (item)}
-				<div class='row'>
+				<div
+					class='row'
+					onpointerenter={() => hoveredRow = item}
+					onpointerleave={() => hoveredRow = null}
+				>
 					{@render columnsSnippet(
 						(column) => table.columns[column]!.row,
 						(column) => {
 							const col = table.columns[column]!
-							return [item, col.options.value ? col.options.value(item) : undefined]
+							return [item, {
+								get index() { return data.indexOf(item) },
+								get value() { return col.options.value ? col.options.value(item) : undefined },
+								get isHovered() { return hoveredRow === item }
+							}]
 						}
 					)}
 				</div>
@@ -374,6 +392,7 @@
 	.statusbar {
 		grid-area: statusbar;
 		overflow: hidden;
+		background-color: var(--tably-statusbar, hsl(0, 0%, 98%));
 	}
 
 	.statusbar > .column {
