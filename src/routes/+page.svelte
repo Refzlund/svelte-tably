@@ -21,18 +21,24 @@
 <button style='margin: 1rem;' onclick={() => panel = panel ? undefined : 'columns'}>Toggle panel</button>
 
 <button onclick={() => data = createData(5)}>5</button>
+<button onclick={() => data = createData(50)}>50</button>
 <button onclick={() => data = createData(500)}>500</button>
 <button onclick={() => data = createData(5000)}>5000</button>
 <button onclick={() => data = createData(50000)}>50000</button>
 
 <div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: clamp(0px, 1200px, 95vw); height: clamp(0px, 800px, 80vh);'>
 	<Table {data} bind:panel>
+	<!-- <Table href={item => `?id={${item.id}}`}>  left-clickable rows  -->
 		{#snippet content({ Column, Panel, state, data })}
 			<Column id='name' sticky sort>
 				{#snippet header()}
 					Name
 				{/snippet}
 				{#snippet row(item)}
+					<!--
+				{#snippet row(item, row)}
+					<span class:hovered={row.isHovered}>
+					-->
 					{item.name}
 				{/snippet}
 				{#snippet statusbar()}

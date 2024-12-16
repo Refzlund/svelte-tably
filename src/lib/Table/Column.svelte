@@ -11,7 +11,14 @@
 <script module lang='ts'>
 	
 	export interface Column<T = unknown, V = unknown> {
-		header: Snippet
+		header: Snippet<[
+			/** 
+			 * Is true when displaying in the header,
+			 * so additional content can be shown if desired,
+			 * so the header snippet can be re-used.
+			*/
+			header?: boolean
+		]>
 		row: Snippet<[item: T, value?: V]>
 		statusbar?: Snippet
 		

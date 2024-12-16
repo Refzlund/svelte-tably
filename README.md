@@ -65,7 +65,7 @@ A high performant dynamic table
         <Panel id='columns'>
             <!-- Anything you might like -->
         </Panel>
-        <Panel ...>
+        <Panel ... backdrop={false}>
             ...
         </Panel>
     {/snippet}
