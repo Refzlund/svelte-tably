@@ -12,7 +12,8 @@
 	
 	export interface TableState<T extends Record<PropertyKey, any> = Record<PropertyKey, any>> {
 		columns: Record<string, TColumn<T, unknown>>
-		panels: Record<string, TPanel>
+		panels: Record<string, TPanel<T>>
+		selected: T[] | null
 		sortby?: string
 		positions: {
 			sticky: string[]
@@ -20,6 +21,7 @@
 			hidden: string[]
 			toggle(key: string): void
 		}
+		readonly resizeable: boolean
 		readonly data: T[]
 		/** Rows become anchors */
 		readonly href?: (item: T) => string
@@ -40,14 +42,23 @@
 	import Panel, { PanelTween, type Panel as TPanel } from './Panel.svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
+	import { get } from 'svelte/store'
+	import { on } from 'svelte/events'
+	import { ka_GE } from '@faker-js/faker'
 
 	interface Props {
-		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, readonly state: TableState<T>, readonly data: T[] }]>
+		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, readonly table: TableState<T>, readonly data: T[] }]>
 
 		panel?: string
 		data?: T[]
 		id?: string
 		href?: (item: T) => string
+		/**
+		 * Can you change the width of the columns?
+		 * @default true
+		*/
+		resizeable?: boolean
+		selectable?: 'hover' | 'always' | 'never'
 	}
 
 	let {
@@ -56,10 +67,12 @@
 		panel = $bindable(),
 		data: _data = [],
 		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''),
-		href
+		href,
+		resizeable = true,
+		selectable = 'never'
 	}: Props = $props()
 	
-	const data = $derived(_data.toSorted())
+	const data = $derived([..._data])
 
 	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows', HTMLElement>
 
@@ -103,6 +116,7 @@
 
 	const table: TableState<T> = $state({
 		columns: {},
+		selected: selectable === 'never' ? null : [],
 		panels: {},
 		positions: {
 			sticky: [],
@@ -120,6 +134,9 @@
 		},
 		get data() {
 			return data
+		},
+		get resizeable() {
+			return resizeable
 		},
 		addColumn(key, column) {
 			table.columns[key] = column
@@ -152,10 +169,15 @@
 	let hoveredRow: T | null = $state(null)
 
 	/** Order of columns */
-	const columns = $derived([...table.positions.sticky, ...table.positions.scroll].filter(key => !table.positions.hidden.includes(key)))
+	const notHidden = (key: string) => !table.positions.hidden.includes(key)
+	const sticky = $derived(table.positions.sticky.filter(notHidden))
+	const scrolled = $derived(table.positions.scroll.filter(notHidden))
+	const columns = $derived([...sticky, ...scrolled])
 
 	/** Width of each column */
 	const columnWidths = $state({}) as Record<string, number>
+
+	const getWidth = (key: string, def: number = 150) => columnWidths[key] || table.columns[key]?.defaults.width || def
 
 	/** grid-template-columns for widths */
 	const style = $derived(`
@@ -165,24 +187,27 @@
 	#${id} > .content > .virtual.bottom {
 		grid-template-columns: ${
 			columns.map((key, i, arr) => {
-				const width = columnWidths[key] || table.columns[key]?.defaults.width || 150
+				const width = getWidth(key)
 				if(i === arr.length - 1)
 					return `minmax(${width}px, 1fr)`
 				return `${width}px`
 			}).join(' ')
 		};
 	}
-	`)
-
-	const columnWidthObserver = typeof MutationObserver === 'undefined' ? undefined : new MutationObserver(mutations => {
-		const target = mutations[0].target as HTMLDivElement
-		columnWidths[target.getAttribute('data-column')!] = parseFloat(target.style.width)
-	})
-
+	` + sticky.map((key, i, arr) => `
+	#${id} .column.sticky[data-column='${key}'] {
+		left: ${getWidth(arr[i - 1], 0)}px;
+	}
+	`).join(''))
+	
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
 		if(!isHeader) return
-		columnWidthObserver?.observe(node, {attributes: true})
-		return { destroy: () => columnWidthObserver?.disconnect() }
+		const observer = new MutationObserver(mutations => {
+			const target = mutations[0].target as HTMLElement
+			columnWidths[target.getAttribute('data-column')!] = parseFloat(target.style.width)
+		})
+		observer.observe(node, {attributes: true})
+		return { destroy: () => observer.disconnect() }
 	}
 
 	function onscroll(event: Event) {
@@ -194,6 +219,10 @@
 		if(!elements.headers) return
 		elements.headers.scrollLeft = target.scrollLeft
 		elements.statusbar.scrollLeft = target.scrollLeft
+	}
+
+	export {
+		table as state
 	}
 
 </script>
@@ -211,8 +240,13 @@
 	{#each table.positions.sticky as column, i (column)}
 		{#if !table.positions.hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			{@const props = isHeader ? { 'data-column': column } : {}}
-			<div class='column sticky' {...props} use:observeColumnWidth={isHeader} class:border={i == table.positions.sticky.length - 1}>
+			<div
+				class='column sticky' 
+				use:observeColumnWidth={isHeader}
+				data-column={column}
+				class:resizeable={table.columns[column].options.resizeable && table.resizeable}
+				class:border={i == table.positions.sticky.length - 1}
+			>
 				{@render renderable(column)?.(args[0], args[1])}
 			</div>
 		{/if}
@@ -220,8 +254,12 @@
 	{#each table.positions.scroll as column, i (column)}
 		{#if !table.positions.hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			{@const props = isHeader ? { 'data-column': column } : {}}
-			<div class='column' {...props} use:observeColumnWidth={isHeader}>
+			<div
+				class='column'
+				data-column={column}
+				use:observeColumnWidth={isHeader}
+				class:resizeable={table.columns[column].options.resizeable && table.resizeable}
+			>
 				{@render renderable(column)?.(args[0], args[1])}
 			</div>
 		{/if}
@@ -240,19 +278,28 @@
 		<div class='rows' bind:this={elements.rows}>
 			{#each area as item, i (item)}
 				{@const props = table.href ? { href: table.href(item) } : {}}
-				<!-- note: <svelte:element> will break the virtualization for some reason -->
+				<!-- note: <svelte:element this={table.href ? 'a' : 'div'}> will break the virtualization for some reason -->
 				<a
 					class='row'
 					{...props}
 					onpointerenter={() => hoveredRow = item}
 					onpointerleave={() => hoveredRow = null}
 				>
+					{#if table.selected && (((selectable === 'hover' && hoveredRow === item) || selectable === 'always') || table.selected.includes(item))}
+						<div class='select' class:hover={selectable === 'hover'}>
+							<input type='checkbox' bind:checked={
+								() => table.selected!.includes(item),
+								(value) => value ? table.selected!.push(item) : table.selected!.splice(table.selected!.indexOf(item), 1)
+							}>
+						</div>
+					{/if}
+
 					{@render columnsSnippet(
 						(column) => table.columns[column]!.row,
 						(column) => {
 							const col = table.columns[column]!
 							return [item, {
-								get index() { return data.indexOf(item) },
+								get index() { return _data.indexOf(item) },
 								get value() { return col.options.value ? col.options.value(item) : undefined },
 								get isHovered() { return hoveredRow === item }
 							}]
@@ -278,7 +325,7 @@
 				in:fly={{ x: 100, easing: sineInOut, duration:300 }}
 				out:fly={{ x:100, duration:200, easing: sineInOut }}
 			>
-				{@render table.panels[panel].content()}
+				{@render table.panels[panel].content({ get table() { return table }, get data() { return data } })}
 			</div>
 		{/if}
 	</div>
@@ -292,14 +339,41 @@
 </div>
 
 
-{@render content?.({ Column, Panel, get state() { return table }, get data() { return data } })}
+{@render content?.({ Column, Panel, get table() { return table }, get data() { return data } })}
 
 
 
 <!---------------------------------------------------->
 <style>
 
-	a {
+	.row {
+		> .select {
+			display: block;
+			position: absolute;
+			z-index: 3;
+			opacity: 1;
+			left: 2px;
+			overflow: visible;
+			background-color: transparent;
+			transition: .15s ease;
+			> input {
+				width: 18px;
+				height: 18px;
+				border-radius: 1rem;
+				cursor: pointer;
+			}
+
+			&.hover {
+				@starting-style {
+					opacity: 0;
+					left: -2px;
+				}
+			}
+		}
+	}
+	
+
+	a.row {
 		color: inherit;
 		text-decoration: inherit;
 	}
@@ -341,7 +415,6 @@
 
 	.sticky {
 		position: sticky;
-		left: 0px;
 		/* right: 100px; */
 		z-index: 1;
 	}
@@ -352,9 +425,12 @@
 
 	.headers > .column {
 		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		resize: horizontal;
 		overflow: hidden;
 		padding: var(--tably-padding-y, .5rem) 0;
+
+		&.resizeable {
+			resize: horizontal;
+		}
 	}
 	
 	.table {
@@ -416,6 +492,7 @@
 	}
 
 	.headers, .row, .statusbar {
+		position: relative;
 		display: grid;
 		width: 100%;
 		height: 100%;

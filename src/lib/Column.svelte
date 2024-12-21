@@ -37,6 +37,7 @@
 		options: {
 			value?: (item: T) => V
 			sorting?: unknown extends V ? (a: T, b: T) => number : (a: V, b: V) => number
+			resizeable: boolean
 		}
 	}
 
@@ -61,6 +62,8 @@
 		width?: number
 		value?: Column<T, V>['options']['value']
 		sorting?: Column<T, V>['options']['sorting']
+		/** @default true */
+		resizeable?: boolean
 	}
 
 	let { 
@@ -70,7 +73,8 @@
 		sort = false, 
 		show = true,
 		width,
-
+		
+		resizeable = true,
 		value, sorting
 	}: Props = $props()
 
@@ -86,7 +90,8 @@
 		},
 		options: {
 			value,
-			sorting
+			sorting,
+			resizeable
 		}
 	})
 
