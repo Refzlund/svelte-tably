@@ -14,12 +14,11 @@
 		}))
 	} 
 
-	let data = $state(createData(500))
+	let data = $state(createData(50))	
 
 	let panel = $state() as undefined | string
 
 	let href = $state(undefined) as undefined | ((item: typeof data[number]) => string)
-	$inspect(href)
 </script>
 <!---------------------------------------------------->
 
@@ -70,7 +69,7 @@
 					Age
 				{/snippet}
 				{#snippet row(item)}
-					<span style='width: 100%; text-align: right; padding-right: 1rem;'>{item.age}</span>
+					<span style='width: 100%; text-align: right; padding-right: 1rem; font-variant-numeric: tabular-nums;'>{item.age}</span>
 				{/snippet}
 				{#snippet statusbar()}
 					<small>{data.reduce((a, b) => a + b.age, 0) / data.length} avg.</small>
@@ -139,10 +138,18 @@
 <!---------------------------------------------------->
 <style>
 
+	:global(body.dark .svelte-tably) {
+		--tably-bg: hsla(0, 0%, 15%);
+		--tably-color: white;
+		--tably-border: hsla(0, 0%, 50%, .2);
+		--tably-statusbar: hsla(0, 0%, 13%);
+	}
+
 	button.visible {
 		border: none; 
 		transition: .15s ease;
 		cursor: pointer;
+		background-color: transparent;
 	}
 	.positioning {
 		button {

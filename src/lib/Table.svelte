@@ -180,7 +180,8 @@
 	const getWidth = (key: string, def: number = 150) => columnWidths[key] || table.columns[key]?.defaults.width || def
 
 	/** grid-template-columns for widths */
-	const style = $derived(`
+	const style = $derived.by(() => {
+		const templateColumns = `
 	#${id} > .headers,
 	#${id} > .content > .rows > .row,
 	#${id} > .statusbar,
@@ -194,18 +195,29 @@
 			}).join(' ')
 		};
 	}
-	` + sticky.map((key, i, arr) => `
-	#${id} .column.sticky[data-column='${key}'] {
-		left: ${getWidth(arr[i - 1], 0)}px;
-	}
-	`).join(''))
+		`
+	
+		let sum = 0
+		const stickyLeft = sticky.map((key, i, arr) => {
+			sum += getWidth(arr[i - 1], i === 0 ? 0 : undefined)
+			return `
+		#${id} .column.sticky[data-column='${key}'] {
+			left: ${sum}px;
+		}
+			`
+		}).join('')
+
+		return templateColumns + stickyLeft
+	})
 	
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
 		if(!isHeader) return
-		const observer = new MutationObserver(mutations => {
-			const target = mutations[0].target as HTMLElement
-			columnWidths[target.getAttribute('data-column')!] = parseFloat(target.style.width)
-		})
+
+		const key = node.getAttribute('data-column')!
+		node.style.width = getWidth(key) + 'px'
+
+		const observer = new MutationObserver(() => columnWidths[key] = parseFloat(node.style.width))
+
 		observer.observe(node, {attributes: true})
 		return { destroy: () => observer.disconnect() }
 	}
@@ -241,7 +253,7 @@
 		{#if !table.positions.hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
 			<div
-				class='column sticky' 
+				class='column sticky'
 				use:observeColumnWidth={isHeader}
 				data-column={column}
 				class:resizeable={table.columns[column].options.resizeable && table.resizeable}
@@ -284,6 +296,7 @@
 					{...props}
 					onpointerenter={() => hoveredRow = item}
 					onpointerleave={() => hoveredRow = null}
+					onclickcapture={e => !table.href && e.preventDefault()}
 				>
 					{#if table.selected && (((selectable === 'hover' && hoveredRow === item) || selectable === 'always') || table.selected.includes(item))}
 						<div class='select' class:hover={selectable === 'hover'}>
