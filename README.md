@@ -14,12 +14,13 @@ A high performant dynamic table
 - [x] "Virtual" data (for sorting/filtering)
 - [x] Panels
 - [x] Virtual elements
-- [ ] sorting
+- [x] sorting
 - [x] select
 - [ ] filtering
 - [ ] orderable table
 - [ ] row context-menu
 - [ ] dropout section
+- [ ] csv export
 
 ### Usage Notes
 

@@ -56,7 +56,7 @@
 					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
 				{/snippet}
 			</Column>
-			<Column id='name' sticky sort>
+			<Column id='name' sticky sort value={r => r.name} sorting>
 				{#snippet header()}
 					Name
 				{/snippet}
@@ -67,7 +67,7 @@
 					<small>{data.length} people</small>
 				{/snippet}
 			</Column>
-			<Column id='age' width={100}>
+			<Column id='age' width={100} value={r => r.age} sorting={(a, b) => a - b}>
 				{#snippet header()}
 					Age
 				{/snippet}
@@ -78,15 +78,11 @@
 					<small>{data.reduce((a, b) => a + b.age, 0) / data.length} avg.</small>
 				{/snippet}
 			</Column>
-			<Column id='email'>
-				{#snippet header()}
-					E-mail
-				{/snippet}
-				{#snippet row(item)}
-					{item.email}
-				{/snippet}
+			<Column id='email' value={r => r.email} sorting>
+				{#snippet header()} E-mail {/snippet}
+				{#snippet row(item)} {item.email} {/snippet}
 			</Column>
-			<Column id='virtual-item-that-does-not-exist-in-data' value={row => row.age > 18} show={false}>
+			<Column id='virtual-item-that-does-not-exist-in-data' value={row => row.age > 18} sorting={(a,b) => Number(a) - Number(b)}>
 				{#snippet header()}
 					Maturity
 				{/snippet}
