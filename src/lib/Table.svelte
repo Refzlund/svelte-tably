@@ -90,6 +90,8 @@
 		 */
 		resizeable?: boolean
 
+		filters?: ((item: T) => boolean)[]
+
 		selected?: T[]
 		select?:
 			| boolean
@@ -152,7 +154,8 @@
 		id = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''),
 		href,
 		resizeable = true,
-		select
+		select,
+		filters: _filters = []
 	}: Props = $props()
 
 	let mounted = $state(false)
@@ -163,12 +166,12 @@
 	let sortedData = $state([]) as T[]
 	let data = $state([]) as T[]
 	$effect(() => {
-		const filters = [] as ((value: T) => boolean)[]
+		const filters = [..._filters] as ((item: T) => boolean)[]
 		for(const key in cols) {
 			const filter = table.columns[key].filter
 			const valueOf = table.columns[key].options.value
 			if(filter && valueOf) {
-				filters.push((value) => filter(valueOf(value)))
+				filters.push((item) => filter(valueOf(item)))
 			}
 		}
 
@@ -288,7 +291,7 @@
 		data.length
 		data
 		untrack(() => {
-			topIndex = virtualTop / heightPerItem || 0
+			topIndex = Math.round(virtualTop / heightPerItem || 0)
 			const end = topIndex + renderItemLength
 			area = data.slice(topIndex, end)
 		})
@@ -569,8 +572,10 @@
 	<tbody class="content" bind:this={elements.rows} onscrollcapture={onscroll} bind:clientHeight={viewportHeight}>
 		{#each area as item, i (item)}
 			{@const props = table.href ? { href: table.href(item) } : {}}
+			{@const index = i + topIndex}
 			<svelte:element
 				this={table.href ? 'a' : 'tr'}
+				aria-rowindex="{index+1}"
 				class="row"
 				class:hover={hoveredRow === item}
 				class:selected={table.selected?.includes(item)}
@@ -587,6 +592,9 @@
 						return [
 							item,
 							{
+								get index() {
+									return index
+								},
 								get value() {
 									return col.options.value ? col.options.value(item) : undefined
 								},

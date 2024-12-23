@@ -22,6 +22,8 @@
 	let selectable = $state(true)
 
 	let search = $state('')
+
+	let filters = $state([]) as ((item: typeof data[number]) => boolean)[]
 </script>
 <!---------------------------------------------------->
 
@@ -43,18 +45,40 @@
 
 	<div>
 		<input bind:value={search} placeholder="Search name">
+		<button
+			onclick={() => {
+				if(filters.length > 0) {
+					return filters = []
+				}
+				filters = [
+					(item) => item.age < 18,
+					(item) => item.email.endsWith('gmail.com')
+				]
+			}}
+		>Toggle filter array</button>
 	</div>
 </div>
 
 <div class='container'>
-	<Table {data} bind:panel {href} select={selectable}>
+	<Table {data} bind:panel {href} select={selectable} {filters}>
 		{#snippet content({ Column, Panel, table, data })}
+			<Column id='id' sticky width={100} resizeable={false}>
+				{#snippet header(header)}
+					{#if !header}
+						<!-- Only show when rendered elsewhere -->
+						ID
+					{/if}
+				{/snippet}
+				{#snippet row(item, row)}
+					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
+				{/snippet}
+			</Column>
 			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)}>
 				{#snippet header()}
 					Name
 				{/snippet}
 				{#snippet row(item, row)}
-					<span class:hovered={row.isHovered}>{item.name}</span>
+					{item.name}
 				{/snippet}
 				{#snippet statusbar()}
 					<small>{data.length} people</small>
@@ -68,7 +92,7 @@
 					<span style='width: 100%; text-align: right; padding-right: 1rem; font-variant-numeric: tabular-nums;'>{item.age}</span>
 				{/snippet}
 				{#snippet statusbar()}
-					<small>{data.reduce((a, b) => a + b.age, 0) / data.length} avg.</small>
+					<small>{(data.reduce((a, b) => a + b.age, 0) / data.length).toFixed(2)} avg.</small>
 				{/snippet}
 			</Column>
 			<Column id='email' value={r => r.email} sort>

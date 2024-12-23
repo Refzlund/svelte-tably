@@ -16,7 +16,7 @@ A high performant dynamic table
 - [x] Virtual elements
 - [x] sorting
 - [x] select
-- [ ] filtering
+- [x] filtering
 - [ ] orderable table
 - [ ] row context-menu
 - [ ] dropout section
