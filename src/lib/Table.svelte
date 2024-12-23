@@ -60,6 +60,7 @@
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import { on } from 'svelte/events'
+	import { Trigger } from './trigger.svelte.js'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -157,14 +158,28 @@
 	let mounted = $state(false)
 	onMount(() => (mounted = true))
 
-	const data = $derived([..._data])
+	let cols: TableState<T>['columns'] = $state({})
+
+	let sortedData = $state([]) as T[]
+	let data = $state([]) as T[]
+	$effect(() => {
+		const filters = [] as ((value: T) => boolean)[]
+		for(const key in cols) {
+			const filter = table.columns[key].filter
+			const valueOf = table.columns[key].options.value
+			if(filter && valueOf) {
+				filters.push((value) => filter(valueOf(value)))
+			}
+		}
+
+		data = filters.length === 0 ? [...sortedData] : sortedData.filter((value) => filters.every((filter) => filter(value)))
+	})
 
 	const elements = $state({}) as Record<
 		'headers' | 'statusbar' | 'rows' | 'virtualTop' | 'virtualBottom' | 'selects',
 		HTMLElement
 	>
-
-	let cols: TableState<T>['columns'] = $state({})
+	
 	let positions: TableState<T>['positions'] = $state({
 		fixed: [],
 		sticky: [],
@@ -226,32 +241,57 @@
 	// #region Virtualization
 	let scrollTop = $state(0)
 	let viewportHeight = $state(0)
-
+	let topIndex = 0
 	let heightPerItem = $state(8)
+	let virtualTop = $state(0)
+	let virtualBottom = $state(0)
+	/** The area of data being rendered */
+	let area = $state([]) as T[]
 
 	const spacing = () => viewportHeight / 2
 
-	let virtualTop = $derived.by(() => {
-		let result = Math.max(scrollTop - spacing(), 0)
-		result -= result % heightPerItem
-		return result
-	})
-	let virtualBottom = $derived.by(() => {
-		let result = heightPerItem * data.length - virtualTop - spacing() * 4
-		result = Math.max(result, 0)
-		return result
-	})
-
 	let renderItemLength = $derived(Math.ceil(Math.max(30, (viewportHeight / heightPerItem) * 2)))
 
-	/** The area of data being rendered */
-	let area = $derived.by(() => {
+	$effect(() => {
+		data
+		untrack(calculateHeightPerItem)
+	})
+
+	let waitAnimationFrame = false
+
+	$effect(() => {
+		scrollTop
+		heightPerItem
+		data.length
+		data
+		untrack(() => {
+			if(!waitAnimationFrame) {
+				setTimeout(() => {
+					waitAnimationFrame = false
+
+					virtualTop = Math.max(scrollTop - spacing(), 0)
+					virtualTop -= virtualTop % heightPerItem
+					
+					virtualBottom = heightPerItem * data.length - virtualTop - spacing() * 4
+					virtualBottom = Math.max(virtualBottom, 0)
+				}, 1000 / 60)
+			}
+			waitAnimationFrame = true
+		})
+	})
+	
+	$effect(() => {
 		table.sortReverse
 		table.sortby
-		const index = virtualTop / heightPerItem || 0
-		const end = index + renderItemLength
-		const result = data.slice(index, end)
-		return result
+		heightPerItem
+		virtualTop
+		data.length
+		data
+		untrack(() => {
+			topIndex = virtualTop / heightPerItem || 0
+			const end = topIndex + renderItemLength
+			area = data.slice(topIndex, end)
+		})
 	})
 
 	function calculateHeightPerItem() {
@@ -260,22 +300,20 @@
 			return
 		}
 		tick().then(() => {
-			const firstRow = elements.rows.children[0].getBoundingClientRect().top
+			if(elements.rows.children.length === 0) return
+			const firstRow = elements.rows.children[0]?.getBoundingClientRect().top
 			const lastRow =
 				elements.rows.children[elements.rows.children.length - 1].getBoundingClientRect().bottom
 			heightPerItem = (lastRow - firstRow) / area.length
 		})
 	}
 
-	$effect(() => {
-		data
-		untrack(calculateHeightPerItem)
-	})
+	
 	// #endregion
 	// * --- Virtualization --- *
-
 	
-
+	// * --- Sorting --- *
+	// #region sorting
 	function sortBy(column: string) {
 		const { sorting, value } = table.columns[column]!.options
 		if(!sorting || !value) return
@@ -293,26 +331,34 @@
 	}
 
 	function sortTable() {
-		if (!table.sortby) return
+		sortedData = [..._data]
+		if (!table.sortby) {
+			return
+		}
 		const column = table.columns[table.sortby]
 		let { sorting, value } = column.options
-		if(!sorting || !value) return
+		if(!sorting || !value) {
+			return
+		}
 		if(sorting === true) {
 			sorting = (a, b) => String(a).localeCompare(String(b))
 		}
 		if(table.sortReverse) {
-			data.sort((a, b) => sorting(value(b), value(a)))
+			sortedData.sort((a, b) => sorting(value(b), value(a)))
 		} else {
-			data.sort((a, b) => sorting(value(a), value(b)))
+			sortedData.sort((a, b) => sorting(value(a), value(b)))
 		}
 	}
 
 	$effect.pre(() => {
-		data
+		_data
+		_data.length
 		table.sortby
 		table.sortReverse
 		untrack(sortTable)
 	})
+	// #endregion
+	// * --- Sorting --- *
 
 	const panelTween = new PanelTween(() => panel, 24)
 
@@ -523,7 +569,6 @@
 	<tbody class="content" bind:this={elements.rows} onscrollcapture={onscroll} bind:clientHeight={viewportHeight}>
 		{#each area as item, i (item)}
 			{@const props = table.href ? { href: table.href(item) } : {}}
-			{@const index = data.indexOf(item) + 1}
 			<svelte:element
 				this={table.href ? 'a' : 'tr'}
 				class="row"
@@ -532,7 +577,6 @@
 				class:first={i === 0}
 				class:last={i === area.length - 1}
 				{...props}
-				aria-rowindex={index}
 				onpointerenter={() => (hoveredRow = item)}
 				onpointerleave={() => (hoveredRow = null)}
 			>
@@ -543,9 +587,6 @@
 						return [
 							item,
 							{
-								get index() {
-									return index - 1
-								},
 								get value() {
 									return col.options.value ? col.options.value(item) : undefined
 								},
@@ -556,9 +597,9 @@
 									return table.selected?.includes(item)
 								},
 								set selected(value) {
-									value ?
-										table.selected!.push(item)
-									:	table.selected!.splice(table.selected!.indexOf(item), 1)
+									value 
+										? table.selected!.push(item)
+										: table.selected!.splice(table.selected!.indexOf(item), 1)
 								}
 							}
 						]
@@ -623,7 +664,7 @@
 				<div class="__fixed">
 					{@render headerSnippet({
 						get isSelected() {
-							return table.data.length === table.selected?.length
+							return table.data.length === table.selected?.length && table.data.length > 0
 						},
 						set isSelected(value) {
 							if (value) {

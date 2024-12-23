@@ -20,6 +20,8 @@
 	let href = $state(undefined) as undefined | ((item: typeof data[number]) => string)
 
 	let selectable = $state(true)
+
+	let search = $state('')
 </script>
 <!---------------------------------------------------->
 
@@ -32,35 +34,27 @@
 	<button onclick={() => data = createData(500)}>500</button>
 	<button onclick={() => data = createData(5000)}>5000</button>
 	<button onclick={() => data = createData(50000)}>50000</button>
-</div>
 
+	<div>
+		<button onclick={() => {
+			href = href ? undefined : (item) => `?name=${item.name}`
+		}}>{href ? 'disable href rows' : 'enable href rows'}</button>
+	</div>
 
-<div style='margin: 1rem;'>
-	<button onclick={() => {
-		href = href ? undefined : (item) => `?name=${item.name}`
-	}}>{href ? 'disable href rows' : 'enable href rows'}</button>
+	<div>
+		<input bind:value={search} placeholder="Search name">
+	</div>
 </div>
 
 <div class='container'>
 	<Table {data} bind:panel {href} select={selectable}>
 		{#snippet content({ Column, Panel, table, data })}
-			<Column id='id' sticky width={100} resizeable={false}>
-				{#snippet header(header)}
-					{#if !header}
-						<!-- Only show when rendered elsewhere -->
-						ID
-					{/if}
-				{/snippet}
-				{#snippet row(item, row)}
-					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
-				{/snippet}
-			</Column>
-			<Column id='name' sticky sortby value={r => r.name} sort>
+			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)}>
 				{#snippet header()}
 					Name
 				{/snippet}
 				{#snippet row(item, row)}
-					{item.name}
+					<span class:hovered={row.isHovered}>{item.name}</span>
 				{/snippet}
 				{#snippet statusbar()}
 					<small>{data.length} people</small>

@@ -81,6 +81,12 @@
 		resizeable?: boolean
 
 		/**
+		 * 
+		 * @example (value) => value.includes(search)
+		*/
+		filter?: (value: V) => boolean
+
+		/**
 		 * Optional: Provide the table it is a part of
 		*/
 		table?: TableState
@@ -93,6 +99,7 @@
 		statusbar?: C['statusbar']
 
 		fixed?: boolean
+		filter?: C['filter']
 
 		/** Default options for initial table */
 		defaults: {
@@ -133,6 +140,8 @@
 		value,
 		sort,
 
+		filter,
+
 		table
 	}: ColumnProps<T, V> = $props()
 
@@ -142,6 +151,7 @@
 		row,
 		statusbar,
 		fixed,
+		filter,
 		defaults: {
 			sticky,
 			sort: sortby,
