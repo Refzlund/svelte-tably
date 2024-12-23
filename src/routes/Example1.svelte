@@ -19,11 +19,14 @@
 	let panel = $state() as undefined | string
 
 	let href = $state(undefined) as undefined | ((item: typeof data[number]) => string)
+
+	let selectable = $state(true)
 </script>
 <!---------------------------------------------------->
 
 <div style='margin: 1rem;' >
 	<button onclick={() => panel = panel ? undefined : 'columns'}>Toggle panel</button>
+	<button onclick={() => selectable = !selectable}>Toggle selectability</button>
 
 	<button onclick={() => data = createData(5)}>5</button>
 	<button onclick={() => data = createData(50)}>50</button>
@@ -39,8 +42,8 @@
 	}}>{href ? 'disable href rows' : 'enable href rows'}</button>
 </div>
 
-<div class='container' style='resize:both; overflow:auto; border: 1px solid hsla(0,0,95%); width: clamp(0px, 1200px, 95vw); height: clamp(0px, 800px, 80vh);'>
-	<Table {data} bind:panel {href} selectable='hover'>
+<div class='container'>
+	<Table {data} bind:panel {href} select={selectable}>
 		{#snippet content({ Column, Panel, table, data })}
 			<Column id='id' sticky width={100} resizeable={false}>
 				{#snippet header(header)}
@@ -50,7 +53,7 @@
 					{/if}
 				{/snippet}
 				{#snippet row(item, row)}
-					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index}</span>
+					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
 				{/snippet}
 			</Column>
 			<Column id='name' sticky sort>
@@ -122,7 +125,7 @@
 							</div>
 						</div>
 						<div use:area={{ axis: 'y' }}>
-							<h4 style='margin: .25rem 0'>Scroll</h4>
+							<h4 style='margin: .0 0 .25rem 0'>Scroll</h4>
 							<div>
 								{@render area(table.positions.scroll)}
 							</div>
@@ -173,7 +176,12 @@
 	}
 	
 	.container {
-		padding: 1rem;
+		padding: 1rem 3rem;
+		resize:both; 
+		overflow:auto; 
+		border: 1px solid hsla(0,0,95%); 
+		width: clamp(0px, 1200px, 90vw); 
+		height: clamp(0px, 800px, 80vh);
 	}
 
 	.order {

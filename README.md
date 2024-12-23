@@ -15,7 +15,7 @@ A high performant dynamic table
 - [x] Panels
 - [x] Virtual elements
 - [ ] sorting
-- [ ] select
+- [x] select
 - [ ] filtering
 - [ ] orderable table
 - [ ] row context-menu
@@ -33,9 +33,10 @@ A high performant dynamic table
     ])
 
     let activePanel = $state('columns') as string | undefined
+	let selected = $state([]) as typeof data
 </script>
 
-<Table {data} panel={activePanel}>
+<Table {data} panel={activePanel} select bind:selected>
     {#snippet content({ Column, Panel, state, data })}
         <Column id='name' sticky>
             {#snippet header()}

@@ -33,18 +33,35 @@
 		return getContext<TableState<T>>('svelte5-table')
 	}
 
+	export type HeaderSelectCtx<T = any> = { 
+		isSelected: boolean,
+		/** The list of selected items */
+		readonly selected: T[]
+		/**
+		 * See [MDN :indeterminate](https://developer.mozilla.org/en-US/docs/Web/CSS/:indeterminate)
+		*/
+		readonly indeterminate: boolean
+	}
+
+	export type RowSelectCtx<T = any> = {
+		readonly item: T
+		readonly row: RowCtx<unknown>
+		data: T[]
+		isSelected: boolean
+	}
+
 </script>
 
 <script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
 
-	import { getContext, setContext, untrack, type Snippet } from 'svelte'
-	import Column, { type Column as TColumn } from './Column.svelte'
+	import { getContext, onMount, setContext, tick, untrack, type Snippet } from 'svelte'
+	import Column, { type RowCtx, type Column as TColumn } from './Column.svelte'
 	import Panel, { PanelTween, type Panel as TPanel } from './Panel.svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
-	import { get } from 'svelte/store'
-	import { on } from 'svelte/events'
-	import { ka_GE } from '@faker-js/faker'
+	import type { get } from 'svelte/store'
+
+	
 
 	interface Props {
 		content: Snippet<[context: { Column: typeof Column<T>, Panel: typeof Panel, readonly table: TableState<T>, readonly data: T[] }]>
@@ -58,77 +75,148 @@
 		 * @default true
 		*/
 		resizeable?: boolean
-		selectable?: 'hover' | 'always' | 'never'
+
+		selected?: T[]
+		select?: boolean | {
+			/**
+			 * The style, in which the selection is shown
+			 * 
+			 * NOTE: If using `edge` | 'side', "show" will always be `hover`. This is due to
+			 * an inconsistency/limitation of matching the scroll between the selection div and the rows.
+			 * 
+			 * @default 'column'
+			 */
+			style?: 'column'
+			/**
+			 * When to show the row-select, when not selected?
+			 * @default 'hover'
+			*/
+			show?: 'hover' | 'always' | 'never'
+			/**
+			 * Custom snippet
+			 */
+			headerSnippet?: Snippet<[context: HeaderSelectCtx]>
+			rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
+		} 
+		// | {
+		// 	/**
+		// 	 * The style, in which the selection is shown
+		// 	 * 
+		// 	 * NOTE: If using `edge` | 'side', "show" will always be `hover`. This is due to
+		// 	 * an inconsistency/limitation of matching the scroll between the selection div and the rows.
+		// 	 * 
+		// 	 * @default 'column'
+		// 	*/
+		// 	style?: 'edge' | 'side'
+		// 	/**
+		// 	 * When to show the row-select, when not selected?
+		// 	 * @default 'hover'
+		// 	*/
+		// 	show?: 'hover'
+		// 	/**
+		// 	 * Custom snippet
+		// 	*/
+		// 	snippet?: Snippet<[context: { item: T, data: T[], selected: boolean }]>
+		// }
+
+		/*
+		ordered?: {
+			style?: 'column' | 'side' // combine with select if both use 'column'
+			show?: 'hover' | 'always'
+			// snippet?: Snippet<[context: { item: T, data: T[], selected: boolean }]>
+		}
+		*/
 	}
 
 	let {
 		content,
-
+		selected = $bindable([]),
 		panel = $bindable(),
 		data: _data = [],
 		id = Array.from({length: 12}, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''),
 		href,
 		resizeable = true,
-		selectable = 'never'
+		select
 	}: Props = $props()
 	
+	let mounted = $state(false)
+	onMount(() => mounted = true)
+
 	const data = $derived([..._data])
 
-	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows', HTMLElement>
+	const elements = $state({}) as Record<'headers' | 'statusbar' | 'rows' | 'virtualTop' | 'virtualBottom' | 'selects', HTMLElement>
 
 
 	// * --- Virtualization --- *
 	let scrollTop = $state(0)
 	let viewportHeight = $state(0)
+	
+	let heightPerItem = $state(8)
 
-	let heightPerItem = $derived.by(() => {
-		data
-		if(!elements.rows)
-			return 8
-		const result = elements.rows.scrollHeight / elements.rows.childNodes.length
+	const spacing = () => viewportHeight / 2
+
+	let virtualTop = $derived.by(() => {
+		let result = Math.max(scrollTop - spacing(), 0)
+		result -= result % heightPerItem
+		return result
+	})
+	let virtualBottom = $derived.by(() => {
+		let result = (heightPerItem * data.length) - virtualTop - spacing() * 4
+		result = Math.max(result, 0)
 		return result
 	})
 
 	let renderItemLength = $derived(Math.ceil(Math.max(30, (viewportHeight / heightPerItem) * 2)))
 
-	const spacing = () => viewportHeight / 2
-	let virtualTop = $derived.by(() => {
-		let scroll = scrollTop - spacing()
-		let virtualTop = Math.max(scroll, 0)
-		virtualTop -= virtualTop % heightPerItem
-		return virtualTop
-	})
-	let virtualBottom = $derived.by(() => {
-		const virtualBottom = (heightPerItem * data.length) - virtualTop - spacing() * 4
-		return Math.max(virtualBottom, 0)
-	})
-	/** The area of data that is rendered */
-	const area = $derived.by(() => {
+	/** The area of data being rendered */
+	let area = $derived.by(() => {
 		const index = (virtualTop / heightPerItem) || 0
-		const end = index + untrack(() => renderItemLength)
-		return data.slice(
+		const end = index + renderItemLength
+		const result = data.slice(
 			index, 
 			end
 		)
+		return result
+	})
+
+	function calculateHeightPerItem() {
+		if(!elements.rows) {
+			heightPerItem = 8
+			return
+		}
+		tick().then(() => {
+			const firstRow = elements.rows.children[0].getBoundingClientRect().top
+			const lastRow = elements.rows.children[elements.rows.children.length - 1].getBoundingClientRect().bottom
+			heightPerItem = (lastRow - firstRow) / area.length
+		})
+	}
+
+	$effect(() => {
+		data
+		untrack(calculateHeightPerItem)
 	})
 	// * --- Virtualization --- *
 
+	let cols: TableState<T>['columns'] = $state({})
+	let positions: TableState<T>['positions'] = $state({
+		fixed: [],
+		sticky: [],
+		scroll: [],
+		hidden: [],
+		toggle(key) {
+			if(table.positions.hidden.includes(key))
+				table.positions.hidden = table.positions.hidden.filter(column => column !== key)
+			else
+				table.positions.hidden.push(key)
+		}
+	})
+	
 
 	const table: TableState<T> = $state({
-		columns: {},
-		selected: selectable === 'never' ? null : [],
+		columns: cols,
+		selected,
 		panels: {},
-		positions: {
-			sticky: [],
-			scroll: [],
-			hidden: [],
-			toggle(key) {
-				if(table.positions.hidden.includes(key))
-					table.positions.hidden = table.positions.hidden.filter(column => column !== key)
-				else
-					table.positions.hidden.push(key)
-			}
-		},
+		positions,
 		get href() {
 			return href
 		},
@@ -144,6 +232,12 @@
 			if(column.defaults.sort)
 				table.sortby = key
 			
+			if(column.fixed) {
+				// @ts-expect-error
+				table.positions.fixed.push(key)
+				return
+			}
+
 			if(!column.defaults.show)
 				table.positions.hidden.push(key)
 			
@@ -154,6 +248,8 @@
 		},
 		removeColumn(key) {
 			delete table.columns[key]
+			// @ts-expect-error fixed is not typed
+			table.positions.fixed = table.positions.fixed.filter(column => column !== key)
 			table.positions.sticky = table.positions.sticky.filter(column => column !== key)
 			table.positions.scroll = table.positions.scroll.filter(column => column !== key)
 			table.positions.hidden = table.positions.hidden.filter(column => column !== key)
@@ -169,10 +265,15 @@
 	let hoveredRow: T | null = $state(null)
 
 	/** Order of columns */
-	const notHidden = (key: string) => !table.positions.hidden.includes(key)
-	const sticky = $derived(table.positions.sticky.filter(notHidden))
-	const scrolled = $derived(table.positions.scroll.filter(notHidden))
-	const columns = $derived([...sticky, ...scrolled])
+	const fixed = $derived(
+		// @ts-expect-error
+		positions.fixed
+	) as string[]
+	const hidden = $derived(positions.hidden)
+	const notHidden = (key: string) => !positions.hidden.includes(key)
+	const sticky = $derived(positions.sticky.filter(notHidden))
+	const scrolled = $derived(positions.scroll.filter(notHidden))
+	const columns = $derived([ ...fixed, ...sticky, ...scrolled ])
 
 	/** Width of each column */
 	const columnWidths = $state({}) as Record<string, number>
@@ -181,10 +282,11 @@
 
 	/** grid-template-columns for widths */
 	const style = $derived.by(() => {
+		if(!mounted) return ''
 		const templateColumns = `
 	#${id} > .headers,
-	#${id} > .content > .rows > .row,
-	#${id} > .statusbar,
+	#${id} > tbody > .row,
+	#${id} > tfoot > tr,
 	#${id} > .content > .virtual.bottom {
 		grid-template-columns: ${
 			columns.map((key, i, arr) => {
@@ -198,34 +300,40 @@
 		`
 	
 		let sum = 0
-		const stickyLeft = sticky.map((key, i, arr) => {
+		const stickyLeft = [...fixed, ...sticky].map((key, i, arr) => {
 			sum += getWidth(arr[i - 1], i === 0 ? 0 : undefined)
 			return `
 		#${id} .column.sticky[data-column='${key}'] {
 			left: ${sum}px;
 		}
-			`
+		`
 		}).join('')
 
 		return templateColumns + stickyLeft
 	})
-	
+
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
 		if(!isHeader) return
 
 		const key = node.getAttribute('data-column')!
 		node.style.width = getWidth(key) + 'px'
 
-		const observer = new MutationObserver(() => columnWidths[key] = parseFloat(node.style.width))
+		const observer = new MutationObserver(() => {
+			columnWidths[key] = parseFloat(node.style.width)
+		})
 
 		observer.observe(node, {attributes: true})
 		return { destroy: () => observer.disconnect() }
 	}
 
-	function onscroll(event: Event) {
-		const target = event.target as HTMLDivElement
+	async function onscroll() {
+		const target = elements.rows
 		if(target.scrollTop !== scrollTop) {
-			scrollTop = target.scrollTop || 0
+			scrollTop = target?.scrollTop ?? scrollTop
+		}
+
+		if(elements.selects) {
+			elements.selects.scrollTop = target?.scrollTop
 		}
 		
 		if(!elements.headers) return
@@ -233,8 +341,13 @@
 		elements.statusbar.scrollLeft = target.scrollLeft
 	}
 
+
 	export {
-		table as state
+		selected,
+		positions,
+		data,
+		href,
+		cols as columns
 	}
 
 </script>
@@ -249,88 +362,102 @@
 	arg: null | ((column: string) => any[]) = null,
 	isHeader = false
 )}
-	{#each table.positions.sticky as column, i (column)}
-		{#if !table.positions.hidden.includes(column)}
+	{#each fixed as column, i (column)}
+		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			<div
+			<svelte:element
+				this={isHeader ? 'th' : 'td'}
+				class='column sticky fixed'
+				data-column={column}
+				class:header={isHeader}
+			>
+				{@render renderable(column)?.(args[0], args[1])}
+			</svelte:element>
+		{/if}
+	{/each}
+	{#each sticky as column, i (column)}
+		{#if !hidden.includes(column)}
+			{@const args = arg ? arg(column) : []}
+			<svelte:element
+				this={isHeader ? 'th' : 'td'}
 				class='column sticky'
 				use:observeColumnWidth={isHeader}
 				data-column={column}
-				class:resizeable={table.columns[column].options.resizeable && table.resizeable}
-				class:border={i == table.positions.sticky.length - 1}
+				class:header={isHeader}
+				class:resizeable={isHeader && table.columns[column].options.resizeable && table.resizeable}
+				class:border={i == sticky.length - 1}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
-			</div>
+			</svelte:element>
 		{/if}
 	{/each}
-	{#each table.positions.scroll as column, i (column)}
-		{#if !table.positions.hidden.includes(column)}
+	{#each scrolled as column, i (column)}
+		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			<div
+			<svelte:element
+				this={isHeader ? 'th' : 'td'}
 				class='column'
 				data-column={column}
 				use:observeColumnWidth={isHeader}
-				class:resizeable={table.columns[column].options.resizeable && table.resizeable}
+				class:resizeable={isHeader && table.columns[column].options.resizeable && table.resizeable}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
-			</div>
+			</svelte:element>
 		{/if}
 	{/each}
 {/snippet}
 
-<div id={id} class='table svelte-tably'>
+<table
+	id={id} 
+	class='table svelte-tably'
+	style='--t: {virtualTop}px; --b: {virtualBottom}px;'
+	aria-rowcount='{data.length}'
+>
 
-	<div class='headers' bind:this={elements.headers}>
+	<thead class='headers' bind:this={elements.headers}>
 		{@render columnsSnippet((column) => table.columns[column]?.header, () => [true], true)}
-	</div>
+	</thead>
 
-	<div class='content' {onscroll} bind:clientHeight={viewportHeight}>
-		<div class='virtual top' style='height: {virtualTop}px'></div>
-		
-		<div class='rows' bind:this={elements.rows}>
-			{#each area as item, i (item)}
-				{@const props = table.href ? { href: table.href(item) } : {}}
-				<!-- note: <svelte:element this={table.href ? 'a' : 'div'}> will break the virtualization for some reason -->
-				<a
-					class='row'
-					{...props}
-					onpointerenter={() => hoveredRow = item}
-					onpointerleave={() => hoveredRow = null}
-					onclickcapture={e => !table.href && e.preventDefault()}
-				>
-					{#if table.selected && (((selectable === 'hover' && hoveredRow === item) || selectable === 'always') || table.selected.includes(item))}
-						<div class='select' class:hover={selectable === 'hover'}>
-							<input type='checkbox' bind:checked={
-								() => table.selected!.includes(item),
-								(value) => value ? table.selected!.push(item) : table.selected!.splice(table.selected!.indexOf(item), 1)
-							}>
-						</div>
-					{/if}
-
-					{@render columnsSnippet(
-						(column) => table.columns[column]!.row,
-						(column) => {
-							const col = table.columns[column]!
-							return [item, {
-								get index() { return _data.indexOf(item) },
-								get value() { return col.options.value ? col.options.value(item) : undefined },
-								get isHovered() { return hoveredRow === item }
-							}]
-						}
-					)}
-				</a>
-			{/each}
-		</div>
-		<div class='virtual bottom' style='height: {virtualBottom}px'>
-			{@render columnsSnippet(() => undefined)}
-		</div>
-	</div>
+	<tbody class='content' bind:this={elements.rows} onscrollcapture={onscroll} bind:clientHeight={viewportHeight}>
+		{#each area as item, i (item)}
+			{@const props = table.href ? { href: table.href(item) } : {}}
+			{@const index = data.indexOf(item) + 1}
+			<svelte:element
+				this={table.href ? 'a' : 'tr'}
+				class='row'
+				class:hover={hoveredRow === item}
+				class:selected={table.selected?.includes(item)}
+				class:first={i === 0}
+				class:last={i === area.length - 1}
+				{...props}
+				aria-rowindex='{index}'
+				onpointerenter={() => hoveredRow = item}
+				onpointerleave={() => hoveredRow = null}
+			>
+				{@render columnsSnippet(
+					(column) => table.columns[column]!.row,
+					(column) => {
+						const col = table.columns[column]!
+						return [item, {
+							get index() { return index - 1 },
+							get value() { return col.options.value ? col.options.value(item) : undefined },
+							get isHovered() { return hoveredRow === item },
+							get selected() { return table.selected?.includes(item) },
+							set selected(value) { value ? table.selected!.push(item) : table.selected!.splice(table.selected!.indexOf(item), 1) }
+						}]
+					}
+				)}
+			</svelte:element>
+		{/each}
+	</tbody>
 	
-	<div class='statusbar' bind:this={elements.statusbar}>
-		{@render columnsSnippet((column) => table.columns[column]?.statusbar)}
-	</div>
+	<tfoot class='statusbar' bind:this={elements.statusbar}>
+		<tr>
+			{@render columnsSnippet((column) => table.columns[column]?.statusbar)}
+		</tr>
+	</tfoot>
 
-	<div class='panel' style='width: {(panelTween.current)}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
+	<caption class='panel' style='width: {(panelTween.current)}px;' style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}>
 		{#if panel && panel in table.panels}
 			<div 
 				class='panel-content'
@@ -341,16 +468,75 @@
 				{@render table.panels[panel].content({ get table() { return table }, get data() { return data } })}
 			</div>
 		{/if}
-	</div>
-	<button 
+	</caption>
+	<caption 
 		class='backdrop' 
-		aria-label='Panel backdrop'
-		tabindex='-1'
 		aria-hidden={panel && table.panels[panel]?.backdrop ? false : true}
-		onclick={() => panel = undefined}
-	></button>
-</div>
+	>
+		<button
+			aria-label='Panel backdrop'
+			tabindex='-1'
+			onclick={() => panel = undefined}
+		></button>
+	</caption>
+</table>
 
+{#snippet headerSelected(ctx: HeaderSelectCtx<T>)}
+	<input
+		type='checkbox'
+		indeterminate={ctx.indeterminate}
+		bind:checked={ctx.isSelected}
+	/>
+{/snippet}
+
+{#snippet rowSelected(ctx: RowSelectCtx<T>)}
+	<input
+		type='checkbox'
+		bind:checked={ctx.isSelected}
+	/>
+{/snippet}
+
+{#if select}
+	{@const { show = 'hover', style = 'column', rowSnippet = rowSelected, headerSnippet = headerSelected } = typeof select === 'boolean' ? {} : select}
+	{#if show !== 'never'}
+		<Column id='__fixed' {table} fixed width={56} resizeable={false}>
+			{#snippet header()}
+				{@render headerSnippet({
+					get isSelected() {
+						return table.data.length === table.selected?.length
+					},
+					set isSelected(value) {
+						if(value) {
+							table.selected = table.data
+						} else {
+							table.selected = []
+						}
+					},
+					get selected() {
+						return table.selected!
+					},
+					get indeterminate() {
+						return (table.selected?.length || 0) > 0 
+							&& table.data.length !== table.selected?.length
+					}
+				})}
+			{/snippet}
+			{#snippet row(item, row)}
+				<div class='__fixed'>
+					{#if row.selected || show === 'always' || (row.isHovered && show === 'hover')}
+						{@render rowSnippet({
+							get isSelected() { return row.selected },
+							set isSelected(value) { row.selected = value },
+							get row() { return row },
+							get item() { return item },
+							get data() { return table.data }
+						})}
+					{/if}
+				</div>
+			{/snippet}
+		</Column>
+	{/if}
+{/if}
 
 {@render content?.({ Column, Panel, get table() { return table }, get data() { return data } })}
 
@@ -359,42 +545,61 @@
 <!---------------------------------------------------->
 <style>
 
-	.row {
-		> .select {
-			display: block;
-			position: absolute;
-			z-index: 3;
-			opacity: 1;
-			left: 2px;
-			overflow: visible;
-			background-color: transparent;
-			transition: .15s ease;
-			> input {
-				width: 18px;
-				height: 18px;
-				border-radius: 1rem;
-				cursor: pointer;
-			}
-
-			&.hover {
-				@starting-style {
-					opacity: 0;
-					left: -2px;
-				}
-			}
-		}
+	.svelte-tably *, .svelte-tably {
+		all: unset;
+		box-sizing: border-box;
+		background-color: inherit;
 	}
-	
+
+	.svelte-tably {
+		position: relative;
+		overflow: visible;
+	}
+
+	input[type='checkbox'] {
+		all: revert;
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+	}
+
+	.__fixed {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: .5rem;
+		position: absolute;
+		top: 0; left: 0;
+		right: 0; bottom: 0;
+		width: 100%;
+	}
+
+	.first .__fixed {
+		top: var(--tably-padding-y, .5rem);
+	}
+	.last .__fixed {
+		bottom: var(--tably-padding-y, .5rem);
+	}
+
+	tbody::before, tbody::after, selects::before, selects::after {
+		content: '';
+		display: grid;
+		min-height: 100%;
+	}
+
+	tbody::before, selects::before {
+		height: var(--t);
+	}
+	tbody::after, selects::after {
+		height: var(--b);
+	}	
 
 	a.row {
 		color: inherit;
 		text-decoration: inherit;
 	}
 	
-	.table, .table * {
-		box-sizing: border-box;
-		background-color: inherit;
-	}
+	
 
 	.backdrop {
 		position: absolute;
@@ -409,6 +614,14 @@
 		border: none;
 		outline: none;
 		cursor: pointer;
+
+		> button {
+			position: absolute;
+			left: 0px;
+			top: 0px;
+			bottom: 0px;
+			right: 0px;
+		}
 
 		&[aria-hidden='true'] {
 			opacity: 0;
@@ -478,19 +691,13 @@
 	}
 
 	.content {
-		grid-area: rows;
 		display: grid;
+		grid-auto-rows: max-content;
+
+		grid-area: rows;
 		scrollbar-width: thin;
 		overflow: auto;
-		height: 100%;
-		grid-template-rows: auto auto 1fr;
-
-		> .rows, > .virtual.bottom {
-			display: grid;
-		}
-		> .virtual.bottom {
-			min-height: 100%;
-		}
+		/* height: 100%; */
 	}
 
 	.statusbar {
@@ -499,12 +706,12 @@
 		background-color: var(--tably-statusbar, hsl(0, 0%, 98%));
 	}
 
-	.statusbar > .column {
+	.statusbar > tr > .column {
 		border-top: 1px solid var(--tably-border, hsl(0, 0%, 90%));
 		padding: calc(var(--tably-padding-y, .5rem) / 2) 0;
 	}
 
-	.headers, .row, .statusbar {
+	.headers, .row, .statusbar > tr {
 		position: relative;
 		display: grid;
 		width: 100%;
@@ -551,10 +758,6 @@
 			overflow: auto;
 			padding: var(--tably-padding-y, .5rem) 0;
 		}
-	}
-
-	.statusbar {
-		grid-area: statusbar;
 	}
 
 </style>

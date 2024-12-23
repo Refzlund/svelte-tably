@@ -10,6 +10,13 @@
 
 <script module lang='ts'>
 	
+	export type RowCtx<V> = {
+		readonly value: V
+		readonly isHovered: boolean
+		readonly index: number
+		selected: boolean
+	}
+
 	export interface Column<T = unknown, V = unknown> {
 		header?: Snippet<[
 			/** 
@@ -19,12 +26,10 @@
 			*/
 			header?: boolean
 		]>
-		row: Snippet<[item: T, row: {
-			readonly value: V
-			readonly isHovered: boolean
-			readonly index: number
-		}]>
+		row: Snippet<[item: T, row: RowCtx<V>]>
 		statusbar?: Snippet
+
+		fixed?: boolean
 		
 		/** Default options for initial table */
 		defaults: {
@@ -46,7 +51,7 @@
 <script lang='ts' generics='T extends Record<PropertyKey, any>, V = unknown'>
 
 	import { onDestroy, type Snippet } from 'svelte'
-	import { getTableState } from './Table.svelte'
+	import { getTableState, type TableState } from './Table.svelte'
 
 	interface Props {
 		header?: Column<T, V>['header']
@@ -57,6 +62,8 @@
 
 		// options
 		sticky?: boolean
+		/** Fixed is like sticky, but in its own category — meant to not be moved/hidden ex. select-boxes */
+		fixed?: boolean
 		sort?: boolean
 		show?: boolean
 		width?: number
@@ -64,24 +71,31 @@
 		sorting?: Column<T, V>['options']['sorting']
 		/** @default true */
 		resizeable?: boolean
+
+		/** Optional: Provide the table it is a part of */
+		table?: TableState
 	}
 
 	let { 
 		header, row, statusbar, id,
 		
 		sticky = false,
+		fixed = false,
 		sort = false, 
 		show = true,
 		width,
 		
 		resizeable = true,
-		value, sorting
+		value, sorting,
+
+		table
 	}: Props = $props()
 
 	const column: Column<T, V> = $state({
 		header,
 		row,
 		statusbar,
+		fixed,
 		defaults: {
 			sticky,
 			sort,
@@ -95,7 +109,7 @@
 		}
 	})
 
-	const table = getTableState()
+	table ??= getTableState()
 	table.addColumn(id, column as Column)
 
 	onDestroy(() => {
