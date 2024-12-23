@@ -374,8 +374,20 @@
 		const key = node.getAttribute('data-column')!
 		node.style.width = getWidth(key) + 'px'
 
+		let mouseup = false
+
 		const observer = new MutationObserver(() => {
-			columnWidths[key] = parseFloat(node.style.width)
+			const width = parseFloat(node.style.width)
+			if(width === columnWidths[key]) return
+			columnWidths[key] = width
+			if(!mouseup) {
+				mouseup = true
+				window.addEventListener('click', (e) => {
+					e.preventDefault()
+					e.stopPropagation()
+					mouseup = false
+				}, { once: true, capture: true })
+			}
 		})
 
 		observer.observe(node, { attributes: true })
@@ -586,7 +598,7 @@
 		{/if}
 	</caption>
 	<caption class="backdrop" aria-hidden={panel && table.panels[panel]?.backdrop ? false : true}>
-		<button aria-label="Panel backdrop" tabindex="-1" onclick={() => (panel = undefined)}></button>
+		<button aria-label="Panel backdrop" class='btn-backdrop' tabindex="-1" onclick={() => (panel = undefined)}></button>
 	</caption>
 </table>
 
@@ -680,9 +692,19 @@
 		overflow: visible;
 	}
 
+	caption {
+		all: unset;
+	}
+
 	input[type='checkbox'] {
 		width: 18px;
 		height: 18px;
+		cursor: pointer;
+	}
+
+	button.btn-backdrop {
+		outline: none;
+		border: none;
 		cursor: pointer;
 	}
 

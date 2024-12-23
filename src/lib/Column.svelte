@@ -47,7 +47,7 @@
 		 * Is this column sorted by default?
 		 * @default false
 		*/
-		sort?: boolean
+		sortby?: boolean
 		/**
 		 * Is this column visible by default?
 		 * @default true
@@ -72,7 +72,7 @@
 		 * 
 		 * @default false
 		*/
-		sorting?: boolean | ((a: V, b: V) => number)
+		sort?: boolean | ((a: V, b: V) => number)
 		/**
 		 * Is this column resizeable?  
 		 * Can not be resized if Table is marked as `resizeable={false}` 
@@ -125,13 +125,13 @@
 
 		sticky = false,
 		fixed = false,
-		sort = false,
+		sortby = false,
 		show = true,
 		width,
 
 		resizeable = true,
 		value,
-		sorting,
+		sort,
 
 		table
 	}: ColumnProps<T, V> = $props()
@@ -144,13 +144,13 @@
 		fixed,
 		defaults: {
 			sticky,
-			sort,
+			sort: sortby,
 			show,
 			width
 		},
 		options: {
 			value,
-			sorting,
+			sorting: sort,
 			resizeable
 		}
 	})

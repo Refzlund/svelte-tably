@@ -1,6 +1,5 @@
 <script lang='ts'>
 	import Table from 'svelte-tably'
-	import floatingUI from 'floating-runes'
 	import reorder, { type ItemState } from 'runic-reorder'
 
 	import {faker} from '@faker-js/faker'
@@ -56,7 +55,7 @@
 					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
 				{/snippet}
 			</Column>
-			<Column id='name' sticky sort value={r => r.name} sorting>
+			<Column id='name' sticky sortby value={r => r.name} sort>
 				{#snippet header()}
 					Name
 				{/snippet}
@@ -67,7 +66,7 @@
 					<small>{data.length} people</small>
 				{/snippet}
 			</Column>
-			<Column id='age' width={100} value={r => r.age} sorting={(a, b) => a - b}>
+			<Column id='age' width={100} value={r => r.age} sort={(a, b) => a - b}>
 				{#snippet header()}
 					Age
 				{/snippet}
@@ -78,11 +77,11 @@
 					<small>{data.reduce((a, b) => a + b.age, 0) / data.length} avg.</small>
 				{/snippet}
 			</Column>
-			<Column id='email' value={r => r.email} sorting>
+			<Column id='email' value={r => r.email} sort>
 				{#snippet header()} E-mail {/snippet}
 				{#snippet row(item)} {item.email} {/snippet}
 			</Column>
-			<Column id='virtual-item-that-does-not-exist-in-data' value={row => row.age > 18} sorting={(a,b) => Number(a) - Number(b)}>
+			<Column id='virtual-item-that-does-not-exist-in-data' value={row => row.age > 18} sort={(a,b) => Number(a) - Number(b)}>
 				{#snippet header()}
 					Maturity
 				{/snippet}
@@ -111,7 +110,7 @@
 
 					{@const area = reorder(item)}
 
-					<div style='width: clamp(0%, 200px, 200px);'>
+					<div style='width: clamp(0%, 200px, 200px); text-align: center;'>
 						<h3 style='margin: 0 0 1rem;'>Columns</h3>
 
 						<div use:area={{ axis: 'y' }} style='padding-bottom: 1rem;'>
