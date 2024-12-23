@@ -9,10 +9,11 @@
 -->
 
 <script module lang="ts">
-	export type RowCtx<V> = {
+	export type RowCtx<T, V> = {
 		readonly value: V
 		readonly isHovered: boolean
 		readonly index: number
+		readonly itemState: ItemState<T>
 		selected: boolean
 	}
 
@@ -27,7 +28,7 @@
 				header?: boolean
 			]
 		>
-		row: Snippet<[item: T, row: RowCtx<V>]>
+		row: Snippet<[item: T, row: RowCtx<T, V>]>
 		statusbar?: Snippet
 
 		id: string
@@ -119,7 +120,8 @@
 
 <script lang="ts">
 	import { onDestroy, type Snippet } from 'svelte'
-	import { getTableState, type TableState } from './Table.svelte'
+	import Table, { getTableState, type TableState } from './Table.svelte'
+	import type { ItemState } from 'runic-reorder'
 
 	type T = $$Generic<Record<PropertyKey, any>>
 	type V = $$Generic
@@ -166,7 +168,7 @@
 	})
 
 	table ??= getTableState()
-	table.addColumn(id, column as ColumnState)
+	table.addColumn(id, column as ColumnState<T>)
 
 	onDestroy(() => {
 		table.removeColumn(id)

@@ -47,7 +47,7 @@
 
 	export type RowSelectCtx<T = any> = {
 		readonly item: T
-		readonly row: RowCtx<unknown>
+		readonly row: RowCtx<T, unknown>
 		data: T[]
 		isSelected: boolean
 	}
@@ -60,7 +60,7 @@
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import { on } from 'svelte/events'
-	import { Trigger } from './trigger.svelte.js'
+	import reorder, { type ItemState } from 'runic-reorder'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -91,6 +91,17 @@
 		resizeable?: boolean
 
 		filters?: ((item: T) => boolean)[]
+
+		/**
+		 * **For a reorderable table, the data is mutated when reordered.**
+		 * 
+		 * Reorderable tables cannot
+		 * - Be filtered
+		 * - Be sorted
+		 * 
+		 * @default false
+		*/
+		reorderable?: boolean
 
 		selected?: T[]
 		select?:
@@ -150,22 +161,30 @@
 		content,
 		selected = $bindable([]),
 		panel = $bindable(),
-		data: _data = [],
+		data: _data = $bindable([]),
 		id = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''),
 		href,
 		resizeable = true,
-		select,
+		reorderable = false,
+		select = false,
 		filters: _filters = []
 	}: Props = $props()
 
 	let mounted = $state(false)
 	onMount(() => (mounted = true))
 
+	const reorderArea = reorder(rowSnippet)
+
 	let cols: TableState<T>['columns'] = $state({})
 
 	let sortedData = $state([]) as T[]
 	let data = $state([]) as T[]
+
+	let dataTarget = () => reorderable ? _data : data
+
 	$effect(() => {
+		if(reorderable) return
+
 		const filters = [..._filters] as ((item: T) => boolean)[]
 		for(const key in cols) {
 			const filter = table.columns[key].filter
@@ -205,7 +224,7 @@
 			return href
 		},
 		get data() {
-			return data
+			return dataTarget()
 		},
 		get resizeable() {
 			return resizeable
@@ -256,7 +275,7 @@
 	let renderItemLength = $derived(Math.ceil(Math.max(30, (viewportHeight / heightPerItem) * 2)))
 
 	$effect(() => {
-		data
+		dataTarget()
 		untrack(calculateHeightPerItem)
 	})
 
@@ -265,8 +284,8 @@
 	$effect(() => {
 		scrollTop
 		heightPerItem
-		data.length
-		data
+		dataTarget().length
+		dataTarget()
 		untrack(() => {
 			if(!waitAnimationFrame) {
 				setTimeout(() => {
@@ -275,7 +294,7 @@
 					virtualTop = Math.max(scrollTop - spacing(), 0)
 					virtualTop -= virtualTop % heightPerItem
 					
-					virtualBottom = heightPerItem * data.length - virtualTop - spacing() * 4
+					virtualBottom = heightPerItem * dataTarget().length - virtualTop - spacing() * 4
 					virtualBottom = Math.max(virtualBottom, 0)
 				}, 1000 / 60)
 			}
@@ -288,12 +307,12 @@
 		table.sortby
 		heightPerItem
 		virtualTop
-		data.length
-		data
+		dataTarget().length
+		dataTarget()
 		untrack(() => {
 			topIndex = Math.round(virtualTop / heightPerItem || 0)
 			const end = topIndex + renderItemLength
-			area = data.slice(topIndex, end)
+			area = dataTarget().slice(topIndex, end)
 		})
 	})
 
@@ -318,6 +337,8 @@
 	// * --- Sorting --- *
 	// #region sorting
 	function sortBy(column: string) {
+		if(reorderable) return
+
 		const { sorting, value } = table.columns[column]!.options
 		if(!sorting || !value) return
 
@@ -332,8 +353,9 @@
 	function sortAction(node: HTMLElement, column: string) {
 		$effect(() => on(node, 'click', () => sortBy(column)))
 	}
-
 	function sortTable() {
+		if(reorderable) return
+
 		sortedData = [..._data]
 		if (!table.sortby) {
 			return
@@ -354,8 +376,8 @@
 	}
 
 	$effect.pre(() => {
-		_data
-		_data.length
+		dataTarget()
+		dataTarget().length
 		table.sortby
 		table.sortReverse
 		untrack(sortTable)
@@ -471,15 +493,29 @@
 	<svg
 		class='sorting-icon'
 		class:reversed
-		xmlns="http://www.w3.org/2000/svg"
-		width="16"
-		height="16"
-		viewBox="0 0 16 16"
+		xmlns='http://www.w3.org/2000/svg'
+		width='16'
+		height='16'
+		viewBox='0 0 16 16'
 		style='margin: auto; margin-right: var(--tably-padding-x, 1rem);'
 	>
 		<path
-			fill="currentColor"
-			d="M3.2 5.74a.75.75 0 0 1 1.06-.04L8 9.227L11.74 5.7a.75.75 0 1 1 1.02 1.1l-4.25 4a.75.75 0 0 1-1.02 0l-4.25-4a.75.75 0 0 1-.04-1.06"
+			fill='currentColor'
+			d='M3.2 5.74a.75.75 0 0 1 1.06-.04L8 9.227L11.74 5.7a.75.75 0 1 1 1.02 1.1l-4.25 4a.75.75 0 0 1-1.02 0l-4.25-4a.75.75 0 0 1-.04-1.06'
+		/>
+	</svg>
+{/snippet}
+
+{#snippet dragSnippet()}
+	<svg
+		xmlns='http://www.w3.org/2000/svg'
+		width='16'
+		height='16'
+		viewBox='0 0 16 16'
+	>
+		<path 
+			fill='currentColor' 
+			d='M5.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m0 4.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m1.5 3a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0M10.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3M12 8a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m-1.5 6a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3'
 		/>
 	</svg>
 {/snippet}
@@ -555,6 +591,58 @@
 	{/each}
 {/snippet}
 
+{#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
+	{@const props = table.href ? { href: table.href(item) } : {}}
+	{@const i = itemState?.index ?? 0}
+	{@const index = (itemState?.index ?? 0) + topIndex}
+	<svelte:element
+		this={table.href ? 'a' : 'tr'}
+		style:opacity='{itemState?.dragging ? 0 : 1}'
+		aria-rowindex="{index+1}"
+		class="row"
+		class:hover={hoveredRow === item}
+		class:selected={table.selected?.includes(item)}
+		class:first={i === 0}
+		class:last={i === area.length - 1}
+		{...props}
+		onpointerenter={() => (hoveredRow = item)}
+		onpointerleave={() => (hoveredRow = null)}
+	>
+		{@render columnsSnippet(
+			(column) => table.columns[column]!.row,
+			(column) => {
+				const col = table.columns[column]!
+				return [
+					item,
+					{
+						get index() {
+							return index
+						},
+						get value() {
+							return col.options.value ? col.options.value(item) : undefined
+						},
+						get isHovered() {
+							return hoveredRow === item
+						},
+						get selected() {
+							return table.selected?.includes(item)
+						},
+						set selected(value) {
+							value 
+								? table.selected!.push(item)
+								: table.selected!.splice(table.selected!.indexOf(item), 1)
+						},
+						get itemState() {
+							return itemState
+						}
+					}
+				]
+			}
+		)}
+	</svelte:element>
+{/snippet}
+
+
 <table
 	{id}
 	class="table svelte-tably"
@@ -569,52 +657,14 @@
 		)}
 	</thead>
 
-	<tbody class="content" bind:this={elements.rows} onscrollcapture={onscroll} bind:clientHeight={viewportHeight}>
-		{#each area as item, i (item)}
-			{@const props = table.href ? { href: table.href(item) } : {}}
-			{@const index = i + topIndex}
-			<svelte:element
-				this={table.href ? 'a' : 'tr'}
-				aria-rowindex="{index+1}"
-				class="row"
-				class:hover={hoveredRow === item}
-				class:selected={table.selected?.includes(item)}
-				class:first={i === 0}
-				class:last={i === area.length - 1}
-				{...props}
-				onpointerenter={() => (hoveredRow = item)}
-				onpointerleave={() => (hoveredRow = null)}
-			>
-				{@render columnsSnippet(
-					(column) => table.columns[column]!.row,
-					(column) => {
-						const col = table.columns[column]!
-						return [
-							item,
-							{
-								get index() {
-									return index
-								},
-								get value() {
-									return col.options.value ? col.options.value(item) : undefined
-								},
-								get isHovered() {
-									return hoveredRow === item
-								},
-								get selected() {
-									return table.selected?.includes(item)
-								},
-								set selected(value) {
-									value 
-										? table.selected!.push(item)
-										: table.selected!.splice(table.selected!.indexOf(item), 1)
-								}
-							}
-						]
-					}
-				)}
-			</svelte:element>
-		{/each}
+	<tbody class="content" use:reorderArea={{ axis: 'y' }} bind:this={elements.rows} onscrollcapture={onscroll} bind:clientHeight={viewportHeight}>
+		{#if reorderable}
+			{@render reorderArea(area)}
+		{:else}
+			{#each area as item, i (item)}
+				{@render rowSnippet(item, { index: i } as ItemState)}
+			{/each}
+		{/if}
 	</tbody>
 
 	<tfoot class="statusbar" bind:this={elements.statusbar}>
@@ -659,40 +709,58 @@
 	<input type="checkbox" bind:checked={ctx.isSelected} />
 {/snippet}
 
-{#if select}
+{#if select || reorderable}
 	{@const {
 		show = 'hover',
 		style = 'column',
 		rowSnippet = rowSelected,
 		headerSnippet = headerSelected
 	} = typeof select === 'boolean' ? {} : select}
-	{#if show !== 'never'}
-		<Column id="__fixed" {table} fixed width={56} resizeable={false}>
+	{#if show !== 'never' || reorderable}
+		<Column
+			id="__fixed"
+			{table}
+			fixed
+			width={Math.max(56, (select && show !== 'never' ? 34 : 0) + (reorderable ? 34 : 0))}
+			resizeable={false}
+		>
 			{#snippet header()}
 				<div class="__fixed">
-					{@render headerSnippet({
-						get isSelected() {
-							return table.data.length === table.selected?.length && table.data.length > 0
-						},
-						set isSelected(value) {
-							if (value) {
-								table.selected = table.data
-							} else {
-								table.selected = []
+					{#if reorderable}
+						<span style='width: 16px; display: flex; align-items: center;'></span>
+					{/if}
+					{#if select}
+						{@render headerSnippet({
+							get isSelected() {
+								return table.data.length === table.selected?.length && table.data.length > 0
+							},
+							set isSelected(value) {
+								if (value) {
+									table.selected = table.data
+								} else {
+									table.selected = []
+								}
+							},
+							get selected() {
+								return table.selected!
+							},
+							get indeterminate() {
+								return (table.selected?.length || 0) > 0 && table.data.length !== table.selected?.length
 							}
-						},
-						get selected() {
-							return table.selected!
-						},
-						get indeterminate() {
-							return (table.selected?.length || 0) > 0 && table.data.length !== table.selected?.length
-						}
-					})}
+						})}
+					{/if}
 				</div>
 			{/snippet}
 			{#snippet row(item, row)}
 				<div class="__fixed">
-					{#if row.selected || show === 'always' || (row.isHovered && show === 'hover')}
+					{#if reorderable}
+						<span style='width: 16px; display: flex; align-items: center;' use:row.itemState.handle>
+							{#if row.isHovered}
+								{@render dragSnippet()}
+							{/if}
+						</span>
+					{/if}
+					{#if select && (row.selected || show === 'always' || (row.isHovered && show === 'hover'))}
 						{@render rowSnippet({
 							get isSelected() {
 								return row.selected
@@ -769,7 +837,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.5rem;
+		gap: 0.25rem;
 		position: absolute;
 		top: 0;
 		left: 0;
