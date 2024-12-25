@@ -9,12 +9,6 @@
 -->
 
 <script module lang='ts'>
-	
-	export interface Panel<T extends Record<PropertyKey, unknown> = Record<PropertyKey, unknown>> {
-		/** A darkened backdrop? */
-		backdrop: boolean
-		content: Snippet<[context: { readonly table: TableState<T>, readonly data: T[] }]>
-	}
 
 	export class PanelTween {
 		#tween = new Tween(0, { duration: 300, easing: sineInOut })
@@ -40,35 +34,14 @@
 
 <script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
 
-	import { onDestroy, type Snippet } from 'svelte'
-	import Table, { getTableState, type TableState } from './Table.svelte'
 	import { Tween } from 'svelte/motion'
 	import { sineInOut } from 'svelte/easing'
+	import { PanelState, type PanelProps } from './panel.svelte.js'
+	import { fromProps } from '$lib/utility.svelte.js'
 
-	interface Props {
-		id: string
+	let {...props}: PanelProps<T> = $props()
+	const properties = fromProps(props)
 
-		/** A darkened backdrop? */
-		backdrop?: boolean
-		children: Snippet<[context: { readonly table: TableState<T>, readonly data: T[] }]>
-	}
-
-	let {
-		backdrop = true,
-		children,
-		id
-	}: Props = $props()
-
-	const panel: Panel<T> = $state({
-		backdrop,
-		content: children
-	})
-
-	const table = getTableState()
-	table.panels[id] = panel
-
-	onDestroy(() => {
-		delete table.panels[id]
-	})
+	new PanelState<T>(properties)
 
 </script>

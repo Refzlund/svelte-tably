@@ -4,6 +4,7 @@
 
 	import {faker} from '@faker-js/faker'
 	import Icon from './Icon.svelte'
+	import { ColumnState } from '$lib/column/column.svelte.js'
 
 	function createData(size: number) {
 		return Array(size).fill(null).map((_, i) => ({
@@ -63,8 +64,8 @@
 	<Table {data} bind:panel {href} select={selectable} {filters}>
 		{#snippet content({ Column, Panel, table, data })}
 			<Column id='id' sticky width={100} resizeable={false}>
-				{#snippet header(header)}
-					{#if !header}
+				{#snippet header(ctx)}
+					{#if !ctx.header}
 						<!-- Only show when rendered elsewhere -->
 						ID
 					{/if}
@@ -110,13 +111,13 @@
 
 			<Panel id='columns'>
 				{#snippet children({ table })}
-					{#snippet item(column: string, itemState: ItemState)}
+					{#snippet item(column: ColumnState, itemState: ItemState)}
 						<div class='order' class:dragging={itemState.dragging} class:positioning={itemState.positioning}>
 							<span use:itemState.handle style='display: flex; align-items: center; gap: .5rem;'>
 								<Icon icon='handle' />
-								{@render table.columns[column]?.header?.()}
+								{@render column.snippets.title()}
 							</span>
-							<button class='visible' onclick={() => table.positions.toggle(column)}>
+							<button class='visible' onclick={() => column.toggleVisiblity()}>
 								{#if table.positions.hidden.includes(column)}
 									<Icon icon='eye-closed' />
 								{:else}
