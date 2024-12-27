@@ -91,7 +91,7 @@ export class TableState<T extends AnyRecord> {
 	/** Primarily externally managed options */
 	options = $derived({
 		panel: this.#props.panel,
-		filters: this.#props.filters ?? [],
+		filters: this.#props.reorderable ? false : (this.#props.filters ?? []),
 		resizeable: this.#props.resizeable ?? true,
 		reorderable: this.#props.reorderable ?? false,
 		href: this.#props.href,
@@ -147,8 +147,8 @@ export class TableState<T extends AnyRecord> {
 	constructor(tableProps: TableProps<T>) {
 		this.#props = tableProps
 		this.id = tableProps.id ?? Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
-		
 		this.data = new Data(this, tableProps)
+		
 		setContext('svelte-tably', this)
 	}
 }

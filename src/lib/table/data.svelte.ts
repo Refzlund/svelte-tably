@@ -4,8 +4,7 @@ import type { TableProps, TableState } from './table.svelte.js'
 
 export class Data<T extends Record<PropertyKey, unknown>> {
 
-	#table: TableState<T>
-	useOrigin = false
+	#table = $state() as TableState<T>
 
 	origin: T[] = $state([])
 	sorted: T[] = $state([])
@@ -14,11 +13,11 @@ export class Data<T extends Record<PropertyKey, unknown>> {
 	sortby = $state() as string | undefined
 	sortReverse = $state(false)
 
-	get current() {
-		return this.filtered
-	}
+	current = $derived(this.#table?.options.reorderable ? this.origin : this.filtered)
 
 	sortBy(column: string) {
+		if (this.#table.options.reorderable) return
+
 		const { sort, value } = this.#table.columns[column]!.options
 		if (!sort || !value) return
 
@@ -69,11 +68,13 @@ export class Data<T extends Record<PropertyKey, unknown>> {
 		this.#table = table
 
 		this.origin = props.data
+
 		this.sorted = this.origin.toSorted()
 		this.filtered = this.sorted
 
 		$effect(() => {
 			this.origin = props.data
+			if (this.#table.options.reorderable) return
 			props.data
 			props.data.length
 			this.sortby

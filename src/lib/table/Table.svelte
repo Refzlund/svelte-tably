@@ -13,7 +13,7 @@
 </script>
 
 <script lang="ts">
-	import { type Snippet } from 'svelte'
+	import { untrack, type Snippet } from 'svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
@@ -93,7 +93,7 @@
 		if (!mount.isMounted) return ''
 		const templateColumns = `
 	#${table.id} > .headers,
-	#${table.id} > tbody > .row,
+	tr.row[data-svelte-tably='${table.id}'],
 	#${table.id} > tfoot > tr,
 	#${table.id} > .content > .virtual.bottom {
 		grid-template-columns: ${columns
@@ -111,7 +111,7 @@
 			.map((column, i, arr) => {
 				sum += getWidth(arr[i - 1]?.id, i === 0 ? 0 : undefined)
 				return `
-		#${table.id} .column.sticky[data-column='${column.id}'] {
+		[data-svelte-tably='${table.id}'] .column.sticky[data-column='${column.id}'] {
 			left: ${sum}px;
 		}
 		`
@@ -203,7 +203,7 @@
 	{#each fixed as column, i (column)}
 		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			{@const sortable = isHeader && column.options.sort}
+			{@const sortable = isHeader && column.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class="column sticky fixed"
@@ -222,7 +222,7 @@
 	{#each sticky as column, i (column)}
 		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			{@const sortable = isHeader && column.options.sort}
+			{@const sortable = isHeader && column.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class="column sticky"
@@ -244,7 +244,7 @@
 	{#each scrolled as column, i (column)}
 		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
-			{@const sortable = isHeader && column!.options.sort}
+			{@const sortable = isHeader && column!.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class="column"
@@ -266,13 +266,15 @@
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
 	{@const props = table.options.href ? { href: table.options.href(item) } : {}}
 	{@const i = itemState?.index ?? 0}
-	{@const index = (itemState?.index ?? 0) + virtualization.topIndex}
+	{@const index = (itemState?.index ?? 0)}
 	<svelte:element
 		this={table.options.href ? 'a' : 'tr'}
-		style:opacity={itemState?.dragging ? 0 : 1}
 		aria-rowindex={index + 1}
+		data-svelte-tably={table.id}
+		style:opacity={itemState?.positioning ? 0 : 1}
 		class="row"
 		class:hover={hoveredRow === item}
+		class:dragging={itemState?.dragging}
 		class:selected={table.selected?.includes(item)}
 		class:first={i === 0}
 		class:last={i === virtualization.area.length - 1}
@@ -337,13 +339,23 @@
 		onscrollcapture={onscroll}
 		bind:clientHeight={virtualization.viewport.height}
 	>
-		<!-- {#if reorderable}
-			{@render reorderArea(virtualization.area)}
+		{#if table.options.reorderable}
+			{@render reorderArea({
+				get view() {
+					return virtualization.area
+				},
+				get modify() {
+					return data.origin
+				},
+				get startIndex() {
+					return virtualization.topIndex
+				}
+			})}
 		{:else}
-		{/if} -->
 		{#each virtualization.area as item, i (item)}
-			{@render rowSnippet(item, { index: i } as ItemState)}
+			{@render rowSnippet(item, { index: i + virtualization.topIndex } as ItemState)}
 		{/each}
+		{/if}
 	</tbody>
 
 	<tfoot class="statusbar" bind:this={elements.statusbar}>
@@ -444,7 +456,7 @@
 				<div class="__fixed">
 					{#if reorderable}
 						<span style="width: 16px; display: flex; align-items: center;" use:row.itemState.handle>
-							{#if row.isHovered}
+							{#if (row.isHovered && !row.itemState?.area.isTarget) || row.itemState.dragging}
 								{@render dragSnippet()}
 							{/if}
 						</span>
@@ -701,10 +713,10 @@
 		}
 	}
 
-	.row:first-child > * {
+	.row:first-child:not(.dragging) > * {
 		padding-top: calc(var(--tably-padding-y, 0.5rem) + calc(var(--tably-padding-y, 0.5rem) / 2));
 	}
-	.row:last-child > * {
+	.row:last-child:not(.dragging) > * {
 		padding-bottom: calc(var(--tably-padding-y, 0.5rem) + calc(var(--tably-padding-y, 0.5rem) / 2));
 	}
 

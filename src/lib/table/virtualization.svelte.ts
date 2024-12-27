@@ -23,7 +23,17 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 	#renderItemLength = $derived(Math.ceil(Math.max(30, (this.viewport.height / this.#heightPerItem) * 2)))
 
 	constructor(table: TableState<T>) {
+		let ticked = $state(false)
+		$effect.pre(() => {
+			table.data.origin
+			untrack(() => {
+				ticked = false
+				requestAnimationFrame(() => ticked = true)
+			})
+		})
+
 		$effect(() => {
+			if(!ticked) return
 			table.data.current
 			untrack(() => {
 				if (!this.viewport.element) {
@@ -44,6 +54,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 		let waitAnimationFrame = false
 
 		$effect(() => {
+			if (!ticked) return
 			this.scrollTop
 			this.#heightPerItem
 			table.data.current.length
@@ -68,6 +79,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 		})
 
 		$effect(() => {
+			if (!ticked) return
 			table.data.sortReverse
 			table.data.sortby
 			this.#heightPerItem

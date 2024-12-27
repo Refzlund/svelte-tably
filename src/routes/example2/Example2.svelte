@@ -12,8 +12,11 @@
 
 </script>
 
+
 <div class="container">
-	<Table {data} reorderable>
+	<div>{data.map(v => v.name)}</div>
+
+	<Table {data} reorderable resizeable={false}>
 		{#snippet content({ Column })}
 			<Column id='name'>
 				{#snippet header()}
