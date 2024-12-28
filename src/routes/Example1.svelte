@@ -56,7 +56,9 @@
 					(item) => item.email.endsWith('gmail.com')
 				]
 			}}
-		>Toggle filter array</button>
+		>
+			Toggle filter array
+		</button>
 	</div>
 </div>
 
@@ -71,7 +73,10 @@
 					{/if}
 				{/snippet}
 				{#snippet row(item, row)}
-					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>{row.index+1}</span>
+					<span style='width: 100%; text-align: right; padding-right: 1rem;' class:hovered={row.isHovered}>
+						{row.index+1}
+						<!-- {row.itemState.position?.y.toFixed(0)} -->
+					</span>
 				{/snippet}
 			</Column>
 			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)}>

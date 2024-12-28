@@ -4,7 +4,7 @@ Work in progress. I needed a break from my primary project, so here's a little s
 
 Example on [Svelte 5 Playground](https://svelte.dev/playground/a16d71c97445455e80a55b77ec1cf915?version=5)
 
-A high performant dynamic table
+A high performant, feature rich, dynamic table
 
 - [x] Sticky columns
 - [x] Show/hide columns
@@ -17,7 +17,7 @@ A high performant dynamic table
 - [x] sorting
 - [x] select
 - [x] filtering
-- [ ] orderable table
+- [x] reorderable table
 - [ ] row context-menu
 - [ ] dropout section
 - [ ] csv export
