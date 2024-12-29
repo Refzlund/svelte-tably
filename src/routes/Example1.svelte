@@ -63,7 +63,7 @@
 </div>
 
 <div class='container'>
-	<Table {data} bind:panel {href} select={selectable} {filters} reorderable>
+	<Table bind:data bind:panel {href} select={selectable} {filters}>
 		{#snippet content({ Column, Panel, table, data })}
 			<Column id='id' sticky width={100} resizeable={false}>
 				{#snippet header(ctx)}
