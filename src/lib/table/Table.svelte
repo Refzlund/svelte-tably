@@ -111,6 +111,7 @@
 			.map((column, i, arr) => {
 				sum += getWidth(arr[i - 1]?.id, i === 0 ? 0 : undefined)
 				return `
+		#${table.id} .column.sticky[data-column='${column.id}'],
 		[data-svelte-tably='${table.id}'] .column.sticky[data-column='${column.id}'] {
 			left: ${sum}px;
 		}
@@ -160,6 +161,10 @@
 		if (!elements.headers) return
 		elements.headers.scrollLeft = target.scrollLeft
 		elements.statusbar.scrollLeft = target.scrollLeft
+	}
+
+	export function toCSV() {
+		
 	}
 </script>
 
@@ -264,7 +269,6 @@
 {/snippet}
 
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
-	{@const props = table.options.href ? { href: table.options.href(item) } : {}}
 	{@const i = itemState?.index ?? 0}
 	{@const index = (itemState?.index ?? 0)}
 	<svelte:element
@@ -278,7 +282,8 @@
 		class:selected={table.selected?.includes(item)}
 		class:first={i === 0}
 		class:last={i === virtualization.area.length - 1}
-		{...props}
+		{...(table.options.href ? { href: table.options.href(item) } : {})}
+		{...(itemState?.dragging ? { 'data-svelte-tably': table.id } : {})}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
 	>
