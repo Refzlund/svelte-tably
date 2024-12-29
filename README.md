@@ -34,7 +34,7 @@ A high performant, feature rich, dynamic table
     ])
 
     let activePanel = $state('columns') as string | undefined
-	let selected = $state([]) as typeof data
+    let selected = $state([]) as typeof data
 </script>
 
 <Table {data} panel={activePanel} select bind:selected>
