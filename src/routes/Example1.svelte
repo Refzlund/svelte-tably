@@ -25,6 +25,8 @@
 	let search = $state('')
 
 	let filters = $state([]) as ((item: typeof data[number]) => boolean)[]
+
+	let table: Table<ReturnType<typeof createData>[number]>
 </script>
 <!---------------------------------------------------->
 
@@ -41,7 +43,12 @@
 	<div>
 		<button onclick={() => {
 			href = href ? undefined : (item) => `?name=${item.name}`
-		}}>{href ? 'disable href rows' : 'enable href rows'}</button>
+		}}>
+			{href ? 'disable href rows' : 'enable href rows'}
+		</button>
+		<button onclick={() => table?.toCSV({ semicolon: true }).then(v => console.log(v))}>
+			Get CSV
+		</button>
 	</div>
 
 	<div>
@@ -63,7 +70,7 @@
 </div>
 
 <div class='container'>
-	<Table bind:data bind:panel {href} select={selectable} {filters} reorderable>
+	<Table bind:this={table} bind:data bind:panel {href} select={selectable} {filters}>
 		{#snippet content({ Column, Panel, table, data })}
 			<Column id='id' sticky width={100} resizeable={false}>
 				{#snippet header(ctx)}

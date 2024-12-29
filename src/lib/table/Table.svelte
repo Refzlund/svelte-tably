@@ -163,12 +163,86 @@
 		elements.statusbar.scrollLeft = target.scrollLeft
 	}
 
-	export function toCSV() {
-		
+	let csv = $state(false)
+	let csvElement = $state() as undefined | HTMLTableElement
+	interface CSVOptions {
+		semicolon?: boolean
+	}
+	export async function toCSV(opts: CSVOptions = {}) {
+		csv = true
+		let resolve: (value: HTMLTableElement) => void
+		const promise = new Promise<HTMLTableElement>(r => resolve = r)
+
+		const clean = $effect.root(() => {
+			$effect(() => {
+				if(csvElement) {
+					resolve(csvElement)
+				}
+			})
+		})
+
+		let table = await promise
+		clean()
+
+		const separator = opts.semicolon ? ";" : ","
+		const rows = Array.from(table.rows)
+		const csvRows = []
+
+		for (const row of rows) {
+			const cells = Array.from(row.cells)
+			const csvCells = cells.map(cell => {
+				let text = cell.textContent?.trim() || ''
+
+				// Escape double quotes and wrap in quotes if needed
+				if(text.includes('"')) {
+					text = text.replace(/"/g, '""')
+				}
+				if(text.includes(separator) || text.includes('"') || text.includes('\n')) {
+					text = `"${text}"`
+				}
+				
+				return text
+			})
+			csvRows.push(csvCells.join(separator))
+		}
+
+		csv = false
+		return csvRows.join("\n")
 	}
 </script>
 
 <!---------------------------------------------------->
+
+{#if csv === true}
+	{@const renderedColumns = columns.filter(v => v.id !== '__fixed')}
+	<table bind:this={csvElement} hidden>
+		<thead>
+			<tr>
+				{#each renderedColumns as column}
+					<th>{@render column.snippets.title()}</th>
+				{/each}
+			</tr>
+		</thead>
+		<tbody>
+			{#each data.current as row, i}
+				<tr>
+					{#each renderedColumns as column}
+						<td>
+							{@render column.snippets.row?.(row, {
+								index: i,
+								value: column.options.value?.(row),
+								isHovered: false,
+								itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
+								selected: false
+							})}
+							<!-- {@render row[column.id]} -->
+						</td>
+					{/each}
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+{/if}
 
 <svelte:head>
 	{@html `<style>${style}</style>`}

@@ -20,7 +20,7 @@ A high performant, feature rich, dynamic table
 - [x] reorderable table
 - [ ] row context-menu
 - [ ] dropout section
-- [ ] csv export
+- [x] to CSV
 
 ### Usage Notes
 
