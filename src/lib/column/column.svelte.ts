@@ -104,7 +104,7 @@ type ColumnOptions<T extends AnyRecord, V> = {
 
 
 
-export class ColumnState<T extends AnyRecord = AnyRecord, V = any> {
+export class ColumnState<T extends AnyRecord = any, V = any> {
 	#props = {} as ColumnProps<T, V>
 
 	id = $derived(this.#props.id) as string

@@ -24,6 +24,8 @@
 	import { fromProps, mounted } from '$lib/utility.svelte.js'
 	import { conditional } from '$lib/conditional.svelte.js'
 	import { ColumnState } from '$lib/column/column.svelte.js'
+	import Expandable from '$lib/expandable/Expandable.svelte'
+	import { SizeTween } from '$lib/size-tween.svelte.js'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -35,7 +37,8 @@
 			new <V>(...args: ConstructorParams<typeof Column<T, V>>): ConstructorReturnType<typeof Column<T, V>>
 			<V>(...args: Parameters<typeof Column<T, V>>): ReturnType<typeof Column<T, V>>
 		}
-		Panel: typeof Panel
+		Panel: typeof Panel<T>
+		Expandable: typeof Expandable<T>
 		readonly table: TableState<T>
 		readonly data: T[]
 	}
@@ -70,7 +73,7 @@
 	
 	const virtualization = new Virtualization(table)
 	
-	const panelTween = new PanelTween(() => properties.panel, 24)
+	const panelTween = new SizeTween(() => !!properties.panel)
 
 	let hoveredRow: T | null = $state(null)
 
@@ -148,6 +151,9 @@
 		return { destroy: () => observer.disconnect() }
 	}
 
+	let tbody = $state({
+		width: 0
+	})
 	async function onscroll() {
 		const target = virtualization.viewport.element!
 		if (target.scrollTop !== virtualization.scrollTop) {
@@ -163,13 +169,18 @@
 		elements.statusbar.scrollLeft = target.scrollLeft
 	}
 
-	let csv = $state(false)
+
+	// * --- CSV --- *
+	let csv = $state(false) as false | { selected?: boolean }
 	let csvElement = $state() as undefined | HTMLTableElement
 	interface CSVOptions {
+		/** Semi-colons as separator? */
 		semicolon?: boolean
+		/** Only selected rows */
+		selected?: boolean
 	}
 	export async function toCSV(opts: CSVOptions = {}) {
-		csv = true
+		csv = { selected: !!opts.selected }
 		let resolve: (value: HTMLTableElement) => void
 		const promise = new Promise<HTMLTableElement>(r => resolve = r)
 
@@ -209,11 +220,17 @@
 		csv = false
 		return csvRows.join("\n")
 	}
+	// * --- CSV --- *
+
+
+	// * --- Expandable --- *
+	let expandedRow = $state() as undefined | T
+
 </script>
 
 <!---------------------------------------------------->
 
-{#if csv === true}
+{#if csv !== false}
 	{@const renderedColumns = columns.filter(v => v.id !== '__fixed')}
 	<table bind:this={csvElement} hidden>
 		<thead>
@@ -225,20 +242,21 @@
 		</thead>
 		<tbody>
 			{#each data.current as row, i}
-				<tr>
-					{#each renderedColumns as column}
-						<td>
-							{@render column.snippets.row?.(row, {
-								index: i,
-								value: column.options.value?.(row),
-								isHovered: false,
-								itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
-								selected: false
-							})}
-							<!-- {@render row[column.id]} -->
-						</td>
-					{/each}
-				</tr>
+				{#if (csv.selected && table.selected.includes(row)) || !csv.selected}
+					<tr>
+						{#each renderedColumns as column}
+							<td>
+								{@render column.snippets.row?.(row, {
+									index: i,
+									value: column.options.value?.(row),
+									isHovered: false,
+									itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
+									selected: false
+								})}
+							</td>
+						{/each}
+					</tr>
+				{/if}
 			{/each}
 		</tbody>
 	</table>
@@ -345,12 +363,11 @@
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
 	{@const i = itemState?.index ?? 0}
 	{@const index = (itemState?.index ?? 0)}
-	<svelte:element
-		this={table.options.href ? 'a' : 'tr'}
+	<tr
 		aria-rowindex={index + 1}
 		data-svelte-tably={table.id}
 		style:opacity={itemState?.positioning ? 0 : 1}
-		class="row"
+		class='row'
 		class:hover={hoveredRow === item}
 		class:dragging={itemState?.dragging}
 		class:selected={table.selected?.includes(item)}
@@ -360,6 +377,15 @@
 		{...(itemState?.dragging ? { 'data-svelte-tably': table.id } : {})}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
+		onclick={(e) => {
+			if (table.expandable) {
+				let target = e.target as HTMLElement
+				if(['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
+					return
+				}
+				expandedRow = expandedRow === item ? undefined : item
+			}
+		}}
 	>
 		{@render columnsSnippet(
 			(column) => column.snippets.row,
@@ -391,20 +417,41 @@
 				]
 			}
 		)}
-	</svelte:element>
+	</tr>
+
+	{@const expandableTween = new SizeTween(() => table.expandable && expandedRow === item, { min: 1, duration: 150 })}
+	{#if expandableTween.current > 0}
+		<tr class='expandable' style='height: {expandableTween.current}px'>
+			<td
+				colspan={columns.length}
+				style='height: {expandableTween.current}px'
+			>
+				<div
+					bind:offsetHeight={expandableTween.size}
+					style='width: {tbody.width - 2}px'
+				>
+					{@render table.expandable!.snippets.content?.(item, {
+						close() {
+							expandedRow = undefined
+						}
+					})}
+				</div>
+			</td>
+		</tr>
+	{/if}
 {/snippet}
 
 <table
 	id={table.id}
-	class="table svelte-tably"
-	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;"
+	class='table svelte-tably'
+	style='--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;'
 	aria-rowcount={data.current.length}
 >
-	<thead class="headers" bind:this={elements.headers}>
+	<thead class='headers' bind:this={elements.headers}>
 		{@render columnsSnippet(
 			(column) => column.snippets.header,
 			() => [{ 
-				get header() { return true } ,
+				get header() { return true },
 				get data() { return data.current }
 			}],
 			true
@@ -412,11 +459,12 @@
 	</thead>
 
 	<tbody
-		class="content"
+		class='content'
 		use:reorderArea={{ axis: 'y' }}
 		bind:this={virtualization.viewport.element}
 		onscrollcapture={onscroll}
 		bind:clientHeight={virtualization.viewport.height}
+		bind:clientWidth={tbody.width}
 	>
 		{#if table.options.reorderable}
 			{@render reorderArea({
@@ -437,7 +485,7 @@
 		{/if}
 	</tbody>
 
-	<tfoot class="statusbar" bind:this={elements.statusbar}>
+	<tfoot class='statusbar' bind:this={elements.statusbar}>
 		<tr>
 			{@render columnsSnippet(
 				(column) => column.snippets.statusbar,
@@ -449,14 +497,13 @@
 	</tfoot>
 
 	<caption
-		class="panel"
-		style="width: {panelTween.current}px;"
-		style:overflow={panelTween.transitioning ? 'hidden' : 'auto'}
+		class='panel'
+		style='width: {panelTween.current}px;'
 	>
 		{#if properties.panel && properties.panel in table.panels}
 			<div
-				class="panel-content"
-				bind:clientWidth={panelTween.width}
+				class='panel-content'
+				bind:offsetWidth={panelTween.size}
 				in:fly={{ x: 100, easing: sineInOut, duration: 300 }}
 				out:fly={{ x: 100, duration: 200, easing: sineInOut }}
 			>
@@ -471,18 +518,18 @@
 			</div>
 		{/if}
 	</caption>
-	<caption class="backdrop" aria-hidden={properties.panel && table.panels[properties.panel]?.backdrop ? false : true}>
-		<button aria-label="Panel backdrop" class="btn-backdrop" tabindex="-1" onclick={() => (properties.panel = undefined)}
+	<caption class='backdrop' aria-hidden={properties.panel && table.panels[properties.panel]?.backdrop ? false : true}>
+		<button aria-label='Panel backdrop' class='btn-backdrop' tabindex='-1' onclick={() => (properties.panel = undefined)}
 		></button>
 	</caption>
 </table>
 
 {#snippet headerSelected(ctx: HeaderSelectCtx<T>)}
-	<input type="checkbox" indeterminate={ctx.indeterminate} bind:checked={ctx.isSelected} />
+	<input type='checkbox' indeterminate={ctx.indeterminate} bind:checked={ctx.isSelected} />
 {/snippet}
 
 {#snippet rowSelected(ctx: RowSelectCtx<T>)}
-	<input type="checkbox" bind:checked={ctx.isSelected} />
+	<input type='checkbox' bind:checked={ctx.isSelected} />
 {/snippet}
 
 {#if table.options.select || table.options.reorderable}
@@ -495,16 +542,16 @@
 	} = typeof select === 'boolean' ? {} : select}
 	{#if show !== 'never' || reorderable}
 		<Column
-			id="__fixed"
+			id='__fixed'
 			{table}
 			fixed
 			width={Math.max(56, (select && show !== 'never' ? 34 : 0) + (reorderable ? 34 : 0))}
 			resizeable={false}
 		>
 			{#snippet header()}
-				<div class="__fixed">
+				<div class='__fixed'>
 					{#if reorderable}
-						<span style="width: 16px; display: flex; align-items: center;"></span>
+						<span style='width: 16px; display: flex; align-items: center;'></span>
 					{/if}
 					{#if select}
 						{@render headerSnippet({
@@ -532,9 +579,9 @@
 				</div>
 			{/snippet}
 			{#snippet row(item, row)}
-				<div class="__fixed">
+				<div class='__fixed'>
 					{#if reorderable}
-						<span style="width: 16px; display: flex; align-items: center;" use:row.itemState.handle>
+						<span style='width: 16px; display: flex; align-items: center;' use:row.itemState.handle>
 							{#if (row.isHovered && !row.itemState?.area.isTarget) || row.itemState.dragging}
 								{@render dragSnippet()}
 							{/if}
@@ -568,6 +615,7 @@
 {@render content?.({
 	Column,
 	Panel,
+	Expandable,
 	get table() {
 		return table
 	},
@@ -587,6 +635,21 @@
 	.svelte-tably {
 		position: relative;
 		overflow: visible;
+	}
+
+	.expandable {
+		position: relative;
+		
+		& > td {
+			position: sticky;
+			left: 1px;
+			> div {
+				position: absolute;
+				overflow: auto;
+				top: 0;
+				left: 0;
+			}
+		}
 	}
 
 	caption {
@@ -651,7 +714,7 @@
 		height: var(--b);
 	}
 
-	a.row {
+	.row:global(:is(a)) {
 		color: inherit;
 		text-decoration: inherit;
 	}
@@ -807,18 +870,19 @@
 		position: relative;
 		grid-area: panel;
 		height: 100%;
-
+		overflow: hidden;
 		border-left: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		scrollbar-gutter: stable both-edges;
-		scrollbar-width: thin;
+		
 		z-index: 4;
 
 		> .panel-content {
 			position: absolute;
 			top: 0;
 			right: 0;
+			bottom: 0;
 			width: min-content;
 			overflow: auto;
+			scrollbar-width: thin;
 			padding: var(--tably-padding-y, 0.5rem) 0;
 		}
 	}

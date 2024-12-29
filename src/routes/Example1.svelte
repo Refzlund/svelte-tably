@@ -71,7 +71,7 @@
 
 <div class='container'>
 	<Table bind:this={table} bind:data bind:panel {href} select={selectable} {filters}>
-		{#snippet content({ Column, Panel, table, data })}
+		{#snippet content({ Column, Panel, Expandable, table, data })}
 			<Column id='id' sticky width={100} resizeable={false}>
 				{#snippet header(ctx)}
 					{#if !ctx.header}
@@ -121,6 +121,20 @@
 				{/snippet}
 			</Column>
 
+			<Expandable>
+				{#snippet content(item, ctx)}
+					<div class='details'>
+						<div>
+							<h5>Name</h5>
+							{item.name}
+						</div>
+						<div>
+							... and so on
+						</div>
+					</div>
+				{/snippet}
+			</Expandable>
+
 			<Panel id='columns'>
 				{#snippet children({ table })}
 					{#snippet item(column: ColumnState, itemState: ItemState)}
@@ -138,25 +152,27 @@
 							</button>
 						</div>
 					{/snippet}
+					
+					{#if item}
+						{@const area = reorder(item)}
 
-					{@const area = reorder(item)}
+						<div style='width: clamp(0%, 200px, 200px); text-align: center; padding: 1rem;'>
+							<h3 style='margin: 0 0 1rem;'>Columns</h3>
 
-					<div style='width: clamp(0%, 200px, 200px); text-align: center;'>
-						<h3 style='margin: 0 0 1rem;'>Columns</h3>
-
-						<div use:area={{ axis: 'y' }} style='padding-bottom: 1rem;'>
-							<h4 style='margin: .25rem 0'>Sticky</h4>
-							<div>
-								{@render area(table.positions.sticky)}
+							<div use:area={{ axis: 'y' }} style='padding-bottom: 1rem;'>
+								<h4 style='margin: .25rem 0'>Sticky</h4>
+								<div>
+									{@render area(table.positions.sticky)}
+								</div>
+							</div>
+							<div use:area={{ axis: 'y' }}>
+								<h4 style='margin: .0 0 .25rem 0'>Scroll</h4>
+								<div>
+									{@render area(table.positions.scroll)}
+								</div>
 							</div>
 						</div>
-						<div use:area={{ axis: 'y' }}>
-							<h4 style='margin: .0 0 .25rem 0'>Scroll</h4>
-							<div>
-								{@render area(table.positions.scroll)}
-							</div>
-						</div>
-					</div>
+					{/if}
 				{/snippet}
 			</Panel>
 		{/snippet}
@@ -166,6 +182,17 @@
 
 <!---------------------------------------------------->
 <style>
+
+	.details {
+		display: flex;
+		gap: 2rem;
+		align-items: center;
+		padding: 1rem 2rem;
+		background-color: hsl(0, 0%, 90%);
+		h5 {
+			margin: 0;
+		}
+	}
 
 	:global(body.dark .svelte-tably) {
 		--tably-bg: hsla(0, 0%, 15%);

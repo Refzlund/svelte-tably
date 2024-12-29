@@ -19,7 +19,7 @@ A high performant, feature rich, dynamic table
 - [x] filtering
 - [x] reorderable table
 - [ ] row context-menu
-- [ ] dropout section
+- [x] Expandable rows
 - [x] to CSV
 
 ### Usage Notes
