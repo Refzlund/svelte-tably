@@ -1,5 +1,5 @@
 import { type Snippet } from 'svelte'
-import { TableState } from '../table/table.svelte.js'
+import { TableState, type RowCtx } from '../table/table.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import { assign, pick, type AnyRecord } from '../utility.svelte.js'
 
@@ -12,8 +12,8 @@ export type ColumnProps<T extends AnyRecord, V> = (
 	& ColumnDefaults<T>
 	& ColumnOptions<T, V>
 ) extends infer K ? {
-	[P in keyof K]: K[P]
-} : never
+		[P in keyof K]: K[P]
+	} : never
 
 
 type HeaderCtx<T> = {
@@ -26,12 +26,8 @@ type HeaderCtx<T> = {
 	readonly header?: boolean
 }
 
-export type RowCtx<T extends AnyRecord, V> = {
+export interface RowColumnCtx<T extends AnyRecord, V> extends RowCtx<T> {
 	readonly value: V
-	readonly isHovered: boolean
-	readonly index: number
-	readonly itemState: ItemState<T>
-	selected: boolean
 }
 
 export type StatusbarCtx<T extends AnyRecord> = {
@@ -41,7 +37,7 @@ export type StatusbarCtx<T extends AnyRecord> = {
 
 type ColumnSnippets<T extends AnyRecord, V> = {
 	header?: Snippet<[ctx: HeaderCtx<T>]>
-	row?: Snippet<[item: T, ctx: RowCtx<T, V>]>
+	row?: Snippet<[item: T, ctx: RowColumnCtx<T, V>]>
 	statusbar?: Snippet<[ctx: StatusbarCtx<T>]>
 }
 
@@ -100,6 +96,15 @@ type ColumnOptions<T extends AnyRecord, V> = {
 	 * @example (value) => value.includes(search)
 	*/
 	filter?: (value: V) => boolean
+
+	/** Styling for the column element (td) */
+	style?: string
+
+	/** Class for the column element (td) */
+	class?: string
+
+	/** Event when the row-column is clicked */
+	onclick?: (event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void
 }
 
 
@@ -119,12 +124,12 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 		/** Title is the header-snippet, with header-ctx: `{ header: false }` */
 		title: (...args: any[]) => {
 			const getData = () => this.table.data.current
-			return this.#props.header?.(...[args[0], () => ({ 
+			return this.#props.header?.(...[args[0], () => ({
 				get header() { return false },
 				get data() {
 					return getData()
 				}
-			 })] as any[] as [any])
+			})] as any[] as [any])
 		},
 		row: this.#props.row,
 		statusbar: this.#props.statusbar
@@ -148,6 +153,9 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 		filter: this.#props.filter,
 		value: this.#props.value,
 		resizeable: this.#props.resizeable ?? true,
+		style: this.#props.style,
+		class: this.#props.class,
+		onclick: this.#props.onclick
 	})
 
 	toggleVisiblity() {
@@ -160,7 +168,7 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 		this.#props = props
 
 		this.table = props.table ?? TableState.getContext<T>()!
-		if(!this.table) {
+		if (!this.table) {
 			throw new Error('svelte-tably: Column must be associated with a Table')
 		}
 

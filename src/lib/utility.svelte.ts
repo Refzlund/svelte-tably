@@ -85,3 +85,15 @@ export function fromProps<T extends AnyRecord, B extends SetterRecord>(props: T,
 		& { readonly [K in keyof T]: T[K] }
 	>
 }
+
+export function assignDescriptors<T extends AnyRecord, B extends AnyRecord>(target: T, source: B): T & B {
+	for (const key of Object.keys(source)) {
+		const descriptor = Object.getOwnPropertyDescriptor(source, key)
+		if (descriptor) {
+			Object.defineProperty(target, key, descriptor)
+		} else {
+			target[key as keyof T] = source[key] // Copy regular values if descriptor is missing
+		}
+	}
+	return target
+}

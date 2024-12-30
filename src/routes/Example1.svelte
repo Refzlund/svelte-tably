@@ -72,7 +72,7 @@
 <div class='container'>
 	<Table bind:this={table} bind:data bind:panel {href} select={selectable} {filters}>
 		{#snippet content({ Column, Panel, Expandable, table, data })}
-			<Column id='id' sticky width={100} resizeable={false}>
+			<Column id='id' sticky width={100} resizeable={false} onclick={(_, r) => r.expanded = !r.expanded}>
 				{#snippet header(ctx)}
 					{#if !ctx.header}
 						<!-- Only show when rendered elsewhere -->
@@ -86,7 +86,7 @@
 					</span>
 				{/snippet}
 			</Column>
-			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)}>
+			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)} style='font-weight: 500;'>
 				{#snippet header()}
 					Name
 				{/snippet}
@@ -112,7 +112,7 @@
 				{#snippet header()} E-mail {/snippet}
 				{#snippet row(item)} {item.email} {/snippet}
 			</Column>
-			<Column id='virtual-item-that-does-not-exist-in-data' value={row => row.age > 18} sort={(a,b) => Number(a) - Number(b)}>
+			<Column id='virtual-item-that-does-not-exist-in-data' value={r => r.age > 18} sort={(a,b) => Number(a) - Number(b)}>
 				{#snippet header()}
 					Maturity
 				{/snippet}
@@ -121,7 +121,7 @@
 				{/snippet}
 			</Column>
 
-			<Expandable>
+			<Expandable click={false}>
 				{#snippet content(item, ctx)}
 					<div class='details'>
 						<div>
@@ -218,7 +218,7 @@
 	.dragging button {
 		opacity: 0;
 	}
-
+	
 	.hovered {
 		color: skyblue;
 		font-weight: bold;

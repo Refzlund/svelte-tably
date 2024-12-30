@@ -18,14 +18,15 @@
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
 	import { Virtualization } from './virtualization.svelte.js'
-	import { TableState, type HeaderSelectCtx, type RowSelectCtx, type TableProps } from './table.svelte.js'
+	import { TableState, type HeaderSelectCtx, type RowCtx, type RowSelectCtx, type TableProps } from './table.svelte.js'
 	import Panel, { PanelTween } from '$lib/panel/Panel.svelte'
 	import Column from '$lib/column/Column.svelte'
-	import { fromProps, mounted } from '$lib/utility.svelte.js'
+	import { assignDescriptors, fromProps, mounted } from '$lib/utility.svelte.js'
 	import { conditional } from '$lib/conditional.svelte.js'
-	import { ColumnState } from '$lib/column/column.svelte.js'
+	import { ColumnState, type RowColumnCtx } from '$lib/column/column.svelte.js'
 	import Expandable from '$lib/expandable/Expandable.svelte'
 	import { SizeTween } from '$lib/size-tween.svelte.js'
+	import { on } from 'svelte/events'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -122,7 +123,13 @@
 			})
 			.join('')
 
-		return templateColumns + stickyLeft
+		const columnStyling = columns.map(column => !column.options.style ? '' : `
+		#${table.id} .column[data-column='${column.id}'] {
+			${column.options.style}
+		}
+		`).join('')
+
+		return templateColumns + stickyLeft + columnStyling
 	})
 
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
@@ -223,8 +230,18 @@
 	// * --- CSV --- *
 
 
-	// * --- Expandable --- *
-	let expandedRow = $state() as undefined | T
+	let expandedRow = $state([]) as T[]
+
+	function addRowColumnEvents(
+		node: HTMLTableColElement, 
+		opts: ['header' | 'row' | 'statusbar', ColumnState, () => RowColumnCtx<T, any>]
+	) {
+		const [where, column, value] = opts
+		if(where !== 'row') return
+		if(column.options.onclick) {
+			$effect(() => on(node, 'click', e => column.options.onclick!(e, value())))
+		}
+	}
 
 </script>
 
@@ -251,7 +268,8 @@
 									value: column.options.value?.(row),
 									isHovered: false,
 									itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
-									selected: false
+									selected: false,
+									expanded: false
 								})}
 							</td>
 						{/each}
@@ -266,19 +284,17 @@
 	{@html `<style>${style}</style>`}
 </svelte:head>
 
-{#snippet chevronSnippet(reversed: boolean)}
+{#snippet chevronSnippet(rotation: number = 0)}
 	<svg
-		class="sorting-icon"
-		class:reversed
 		xmlns="http://www.w3.org/2000/svg"
 		width="16"
 		height="16"
 		viewBox="0 0 16 16"
-		style="margin: auto; margin-right: var(--tably-padding-x, 1rem);"
+		style="transform: rotate({rotation}deg)"
 	>
 		<path
 			fill="currentColor"
-			d="M3.2 5.74a.75.75 0 0 1 1.06-.04L8 9.227L11.74 5.7a.75.75 0 1 1 1.02 1.1l-4.25 4a.75.75 0 0 1-1.02 0l-4.25-4a.75.75 0 0 1-.04-1.06"
+			d="M3.2 10.26a.75.75 0 0 0 1.06.04L8 6.773l3.74 3.527a.75.75 0 1 0 1.02-1.1l-4.25-4a.75.75 0 0 0-1.02 0l-4.25 4a.75.75 0 0 0-.04 1.06"
 		></path>
 	</svg>
 {/snippet}
@@ -295,15 +311,20 @@
 {#snippet columnsSnippet(
 	renderable: (column: ColumnState) => Snippet<[arg0?: any, arg1?: any]> | undefined,
 	arg: null | ((column: ColumnState) => any[]) = null,
-	isHeader = false
+	where: 'header' | 'row' | 'statusbar'
 )}
+	{@const isHeader = where === 'header'}
 	{#each fixed as column, i (column)}
 		{#if !hidden.includes(column)}
 			{@const args = arg ? arg(column) : []}
 			{@const sortable = isHeader && column.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
-				class="column sticky fixed"
+				class={column.options.class ?? ''}
+				class:column={true}
+				class:sticky={true}
+				class:fixed={true}
+				use:addRowColumnEvents={[where, column, () => args[1]]}
 				data-column={column.id}
 				class:header={isHeader}
 				class:sortable
@@ -311,7 +332,9 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && data.sortby === column.id && sortable}
-					{@render chevronSnippet(data.sortReverse)}
+					<span class='sorting-icon'>
+						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+					</span>
 				{/if}
 			</svelte:element>
 		{/if}
@@ -322,7 +345,10 @@
 			{@const sortable = isHeader && column.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
-				class="column sticky"
+				class={column.options.class ?? ''}
+				class:column={true}
+				class:sticky={true}
+				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
 				data-column={column.id}
 				class:header={isHeader}
@@ -333,7 +359,9 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && data.sortby === column.id && sortable}
-					{@render chevronSnippet(data.sortReverse)}
+					<span class='sorting-icon'>
+						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+					</span>
 				{/if}
 			</svelte:element>
 		{/if}
@@ -344,8 +372,10 @@
 			{@const sortable = isHeader && column!.options.sort && !table.options.reorderable}
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
-				class="column"
+				class={column.options.class ?? ''}
+				class:column={true}
 				data-column={column.id}
+				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
 				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
 				class:sortable
@@ -353,7 +383,9 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && data.sortby === column.id && sortable}
-					{@render chevronSnippet(data.sortReverse)}
+					<span class='sorting-icon'>
+						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+					</span>
 				{/if}
 			</svelte:element>
 		{/if}
@@ -361,8 +393,51 @@
 {/snippet}
 
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
-	{@const i = itemState?.index ?? 0}
-	{@const index = (itemState?.index ?? 0)}
+	{@const index = itemState?.index ?? 0}
+	{@const toggleExpand = (value?: boolean) => {
+		let indexOf = expandedRow.indexOf(item)
+		if(value !== undefined) {
+			value = indexOf === -1
+		}
+		
+		if(!value) {
+			expandedRow.splice(indexOf, 1)
+			return
+		}
+		if(table.expandable?.options.multiple === true) {
+			expandedRow.push(item)
+		}
+		else {
+			expandedRow[0] = item
+		}
+	}}
+
+	{@const ctx: RowCtx<T> = {
+		get index() {
+			return index
+		},
+		get isHovered() {
+			return hoveredRow === item
+		},
+		get selected() {
+			return table.selected?.includes(item)
+		},
+		set selected(value) {
+			value ?
+				table.selected!.push(item)
+			:	table.selected!.splice(table.selected!.indexOf(item), 1)
+		},
+		get itemState() {
+			return itemState
+		},
+		get expanded() {
+			return expandedRow.includes(item)
+		},
+		set expanded(value) {
+			toggleExpand(value)
+		}
+	}}
+
 	<tr
 		aria-rowindex={index + 1}
 		data-svelte-tably={table.id}
@@ -371,19 +446,19 @@
 		class:hover={hoveredRow === item}
 		class:dragging={itemState?.dragging}
 		class:selected={table.selected?.includes(item)}
-		class:first={i === 0}
-		class:last={i === virtualization.area.length - 1}
+		class:first={index === 0}
+		class:last={index === virtualization.area.length - 1}
 		{...(table.options.href ? { href: table.options.href(item) } : {})}
 		{...(itemState?.dragging ? { 'data-svelte-tably': table.id } : {})}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
 		onclick={(e) => {
-			if (table.expandable) {
+			if (table.expandable?.options.click === true) {
 				let target = e.target as HTMLElement
 				if(['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
 					return
 				}
-				expandedRow = expandedRow === item ? undefined : item
+				toggleExpand()
 			}
 		}}
 	>
@@ -392,34 +467,20 @@
 			(column) => {
 				return [
 					item,
-					{
-						get index() {
-							return index
-						},
+					assignDescriptors({
 						get value() {
 							return column.options.value ? column.options.value(item) : undefined
-						},
-						get isHovered() {
-							return hoveredRow === item
-						},
-						get selected() {
-							return table.selected?.includes(item)
-						},
-						set selected(value) {
-							value ?
-								table.selected!.push(item)
-							:	table.selected!.splice(table.selected!.indexOf(item), 1)
-						},
-						get itemState() {
-							return itemState
 						}
-					}
+					}, ctx)
 				]
-			}
+			},
+			'row'
 		)}
 	</tr>
 
-	{@const expandableTween = new SizeTween(() => table.expandable && expandedRow === item, { min: 1, duration: 150 })}
+	{@const expandableTween = new SizeTween(
+		() => table.expandable && expandedRow.includes(item), 
+		{ min: 1, duration: table.expandable?.options.slide.duration, easing: table.expandable?.options.slide.easing })}
 	{#if expandableTween.current > 0}
 		<tr class='expandable' style='height: {expandableTween.current}px'>
 			<td
@@ -428,13 +489,9 @@
 			>
 				<div
 					bind:offsetHeight={expandableTween.size}
-					style='width: {tbody.width - 2}px'
+					style='width: {tbody.width - 3}px'
 				>
-					{@render table.expandable!.snippets.content?.(item, {
-						close() {
-							expandedRow = undefined
-						}
-					})}
+					{@render table.expandable!.snippets.content?.(item, ctx)}
 				</div>
 			</td>
 		</tr>
@@ -447,16 +504,18 @@
 	style='--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;'
 	aria-rowcount={data.current.length}
 >
-	<thead class='headers' bind:this={elements.headers}>
-		{@render columnsSnippet(
-			(column) => column.snippets.header,
-			() => [{ 
-				get header() { return true },
-				get data() { return data.current }
-			}],
-			true
-		)}
-	</thead>
+	{#if columns.some(v => v.snippets.header)}
+		<thead class='headers' bind:this={elements.headers}>
+			{@render columnsSnippet(
+				(column) => column.snippets.header,
+				() => [{ 
+					get header() { return true },
+					get data() { return data.current }
+				}],
+				'header'
+			)}
+		</thead>
+	{/if}
 
 	<tbody
 		class='content'
@@ -479,22 +538,25 @@
 				}
 			})}
 		{:else}
-		{#each virtualization.area as item, i (item)}
-			{@render rowSnippet(item, { index: i + virtualization.topIndex } as ItemState)}
-		{/each}
+			{#each virtualization.area as item, i (item)}
+				{@render rowSnippet(item, { index: i + virtualization.topIndex } as ItemState)}
+			{/each}
 		{/if}
 	</tbody>
 
-	<tfoot class='statusbar' bind:this={elements.statusbar}>
-		<tr>
-			{@render columnsSnippet(
-				(column) => column.snippets.statusbar,
-				() => [{
-					get data() { return data.current }
-				}]
-			)}
-		</tr>
-	</tfoot>
+	{#if columns.some(v => v.snippets.statusbar)}
+		<tfoot class='statusbar' bind:this={elements.statusbar}>
+			<tr>
+				{@render columnsSnippet(
+					(column) => column.snippets.statusbar,
+					() => [{
+						get data() { return data.current }
+					}],
+					'statusbar'
+				)}
+			</tr>
+		</tfoot>
+	{/if}
 
 	<caption
 		class='panel'
@@ -532,20 +594,25 @@
 	<input type='checkbox' bind:checked={ctx.isSelected} />
 {/snippet}
 
-{#if table.options.select || table.options.reorderable}
+{#if table.options.select || table.options.reorderable || table.expandable}
 	{@const { select, reorderable } = table.options}
+	{@const expandable = table.expandable}
 	{@const {
 		show = 'hover',
 		style = 'column',
 		rowSnippet = rowSelected,
 		headerSnippet = headerSelected
 	} = typeof select === 'boolean' ? {} : select}
-	{#if show !== 'never' || reorderable}
+	{#if show !== 'never' || reorderable || expandable?.options.chevron !== 'never'}
 		<Column
 			id='__fixed'
 			{table}
 			fixed
-			width={Math.max(56, (select && show !== 'never' ? 34 : 0) + (reorderable ? 34 : 0))}
+			width={Math.max(56, 0
+				+ (select && show !== 'never' ? 34 : 0) 
+				+ (reorderable ? 34 : 0)
+				+ (expandable?.options.chevron !== 'never' ? 34 : 0)
+			)}
 			resizeable={false}
 		>
 			{#snippet header()}
@@ -580,14 +647,14 @@
 			{/snippet}
 			{#snippet row(item, row)}
 				<div class='__fixed'>
-					{#if reorderable}
+					{#if reorderable && row.itemState}
 						<span style='width: 16px; display: flex; align-items: center;' use:row.itemState.handle>
-							{#if (row.isHovered && !row.itemState?.area.isTarget) || row.itemState.dragging}
+							{#if (row.isHovered && !row.itemState.area.isTarget) || row.itemState.dragging}
 								{@render dragSnippet()}
 							{/if}
 						</span>
 					{/if}
-					{#if select && (row.selected || show === 'always' || (row.isHovered && show === 'hover'))}
+					{#if select && (row.selected || show === 'always' || (row.isHovered && show === 'hover') || row.expanded)}
 						{@render rowSnippet({
 							get isSelected() {
 								return row.selected
@@ -605,6 +672,11 @@
 								return data.current
 							}
 						})}
+					{/if}
+					{#if expandable && (row.expanded || expandable.options.chevron === 'always' || (row.isHovered && expandable.options.chevron === 'hover'))}
+						<button class='expand-row' onclick={() => row.expanded = !row.expanded}>
+							{@render chevronSnippet(row.expanded ? 180 : 90)}
+						</button>
 					{/if}
 				</div>
 			{/snippet}
@@ -646,9 +718,27 @@
 			> div {
 				position: absolute;
 				overflow: auto;
-				top: 0;
+				top: -1.5px;
 				left: 0;
 			}
+		}
+	}
+
+	.expand-row {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 0;
+		outline: none;
+		border: none;
+		cursor: pointer;
+		background-color: transparent;
+		color: inherit;
+		width: 22px;
+		height: 100%;
+
+		> svg {
+			transition: transform 0.15s ease;
 		}
 	}
 
@@ -669,10 +759,13 @@
 	}
 
 	.sorting-icon {
-		transition: transform 0.15s ease;
-		transform: rotateZ(0deg);
-		&.reversed {
-			transform: rotateZ(-180deg);
+		align-items: center;
+		justify-items: end;
+		margin: 0;
+		margin-left: auto;
+		margin-right: var(--tably-padding-x, 1rem);
+		> svg {
+			transition: transform 0.15s ease;
 		}
 	}
 

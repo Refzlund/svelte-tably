@@ -1,10 +1,12 @@
 import { tick, untrack } from 'svelte'
 import { sineInOut } from 'svelte/easing'
 import { Tween } from 'svelte/motion'
+import type { EasingFunction } from 'svelte/transition'
 
 interface SizeOptions {
 	min?: number
 	duration?: number
+	easing?: EasingFunction
 }
 
 export class SizeTween {
@@ -25,6 +27,10 @@ export class SizeTween {
 	constructor(cb: () => boolean | undefined, opts: SizeOptions = {}) {
 		if('duration' in opts) {
 			this.#tweenOptions.duration = opts.duration!
+		}
+
+		if('easing' in opts) {
+			this.#tweenOptions.easing = opts.easing!
 		}
 
 		untrack(() => {

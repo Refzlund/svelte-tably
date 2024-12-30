@@ -1,9 +1,10 @@
 import { getContext, setContext, type Snippet } from 'svelte'
-import { ColumnState, type RowCtx } from '../column/column.svelte.js'
+import { ColumnState, type RowColumnCtx } from '../column/column.svelte.js'
 import { PanelState } from '$lib/panel/panel.svelte.js'
 import { Data } from './data.svelte.js'
 import { assign, boundAssign, boundPick, pick, type AnyRecord, type Simplify } from '$lib/utility.svelte.js'
 import type { ExpandableState } from '$lib/expandable/expandable.svelte.js'
+import type { ItemState } from 'runic-reorder'
 
 export type HeaderSelectCtx<T extends AnyRecord = any> = {
 	isSelected: boolean
@@ -17,9 +18,17 @@ export type HeaderSelectCtx<T extends AnyRecord = any> = {
 
 export type RowSelectCtx<T extends AnyRecord = any> = {
 	readonly item: T
-	readonly row: RowCtx<T, unknown>
+	readonly row: RowColumnCtx<T, unknown>
 	data: T[]
 	isSelected: boolean
+}
+
+export interface RowCtx<T extends AnyRecord> {
+	readonly isHovered: boolean
+	readonly index: number
+	readonly itemState: ItemState<T> | undefined
+	selected: boolean
+	expanded: boolean
 }
 
 export type TableProps<T extends AnyRecord> = {
@@ -150,7 +159,7 @@ export class TableState<T extends AnyRecord> {
 		this.#props = tableProps
 		this.id = tableProps.id ?? Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
 		this.data = new Data(this, tableProps)
-		
+
 		setContext('svelte-tably', this)
 	}
 }
