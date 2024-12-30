@@ -13,7 +13,7 @@
 </script>
 
 <script lang="ts">
-	import { untrack, type Snippet } from 'svelte'
+	import { tick, untrack, type Snippet } from 'svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
@@ -231,6 +231,27 @@
 
 
 	let expandedRow = $state([]) as T[]
+	let expandTick = false
+	function toggleExpand(item: T, value?: boolean) {
+		if(expandTick) return
+		expandTick = true
+		requestAnimationFrame(() => expandTick = false)
+
+		let indexOf = expandedRow.indexOf(item)
+		if(value === undefined) {
+			value = indexOf === -1
+		}
+		if(!value) {
+			expandedRow.splice(indexOf, 1)
+			return
+		}
+		if(table.expandable?.options.multiple === true) {
+			expandedRow.push(item)
+		}
+		else {
+			expandedRow[0] = item
+		}
+	}
 
 	function addRowColumnEvents(
 		node: HTMLTableColElement, 
@@ -394,23 +415,6 @@
 
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
 	{@const index = itemState?.index ?? 0}
-	{@const toggleExpand = (value?: boolean) => {
-		let indexOf = expandedRow.indexOf(item)
-		if(value !== undefined) {
-			value = indexOf === -1
-		}
-		
-		if(!value) {
-			expandedRow.splice(indexOf, 1)
-			return
-		}
-		if(table.expandable?.options.multiple === true) {
-			expandedRow.push(item)
-		}
-		else {
-			expandedRow[0] = item
-		}
-	}}
 
 	{@const ctx: RowCtx<T> = {
 		get index() {
@@ -434,7 +438,7 @@
 			return expandedRow.includes(item)
 		},
 		set expanded(value) {
-			toggleExpand(value)
+			toggleExpand(item, value)
 		}
 	}}
 
@@ -458,7 +462,7 @@
 				if(['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
 					return
 				}
-				toggleExpand()
+				ctx.expanded = !ctx.expanded
 			}
 		}}
 	>
