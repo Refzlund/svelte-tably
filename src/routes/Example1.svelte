@@ -1,11 +1,10 @@
 <script lang='ts'>
-	import Table from 'svelte-tably'
+	import Table, { type ColumnState } from 'svelte-tably'
 	import reorder, { type ItemState } from 'runic-reorder'
 
 	import {faker} from '@faker-js/faker'
 	import Icon from './Icon.svelte'
-	import { ColumnState } from '$lib/column/column.svelte.js'
-
+	
 	function createData(size: number) {
 		return Array(size).fill(null).map(person)
 	}
