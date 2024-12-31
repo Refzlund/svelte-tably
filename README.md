@@ -21,7 +21,7 @@ A high performant, feature rich, dynamic table
 - [x] Row context menus
 - [x] Expandable rows
 - [x] to CSV
-- [ ] Auto: Table based on data, sortable
+- [x] Auto: Table based on data, sortable
 
 ### Usage Notes
 
@@ -37,6 +37,9 @@ A high performant, feature rich, dynamic table
     let activePanel = $state('columns') as string | undefined
     let selected = $state([]) as typeof data
 </script>
+
+<!-- Auto: Generate Columns for you -->
+<Table auto {data} resizeable={false} filters=[...] />
 
 <Table {data} panel={activePanel} select bind:selected>
     {#snippet content({ Column, Panel, Expandable, Row, state, data })}
@@ -97,14 +100,15 @@ For quick styling
 
 | CSS Variable | Description | Default |
 | - | - | - |
-| --tably-bg | background-color | `hsl(0, 0%, 100%)` |
-| --tably-color | color | `hsl(0, 0%, 0%)` |
-| --tably-border | border | `hsl(0, 0%, 90%)` |
+| --tably-bg | Background color | `hsl(0, 0%, 100%)` |
+| --tably-color | Text color | `hsl(0, 0%, 0%)` |
+| --tably-border | Border for sticky columns and header | `hsl(0, 0%, 90%)` |
+| --tably-border-grid | Border for the table-grid | `hsl(0, 0%, 98%)` |
 | --tably-statusbar | background-color for the statusbar | `hsl(0, 0%, 98%)` |
 | --tably-padding-y | Padding above/below each column | `.5rem` |
 | --tably-padding-x | Padding left of each column | `1rem` |
 | --tably-radius | Table radius | `.25rem` |
 
-Advanced styling can be done via `:global .svelte-tably`
-
-
+> [!NOTE]  
+> Advanced styling can be done via `:global(.svelte-tably)`  
+> `table > thead > tr > th, table > tbody > tr > td, table > tfoot > tr > td`

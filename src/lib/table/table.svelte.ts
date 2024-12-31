@@ -74,7 +74,8 @@ export type TableProps<T extends AnyRecord> = {
 		headerSnippet?: Snippet<[context: HeaderSelectCtx]>
 		rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
 	}
-
+	/** Create missing columns automatically. */
+	auto?: boolean
 }
 
 export class TableState<T extends AnyRecord> {
@@ -108,7 +109,8 @@ export class TableState<T extends AnyRecord> {
 		resizeable: this.#props.resizeable ?? true,
 		reorderable: this.#props.reorderable ?? false,
 		href: this.#props.href,
-		select: this.#props.select ?? false
+		select: this.#props.select ?? false,
+		auto: this.#props.auto ?? false
 	})
 
 	add(state: ColumnState<T, any> | PanelState<T>) {

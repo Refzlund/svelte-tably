@@ -3,40 +3,26 @@
 	import Table from 'svelte-tably'
 	
 	let data = $state([
-		{ name: 'Giraffe', age: 26 },
-		{ name: 'Shiba', age: 21 },
-		{ name: 'Cat', age: 16 },
 		{ name: 'Dog', age: 12 },
+		{ name: 'Shiba', age: 21 },
+		{ name: 'Cat', age: 28 },
 		{ name: 'Pig', age: 10 },
+		{ name: 'Crow', age: 30 },
+		{ name: 'Giraffe', age: 26 },
 	])
 
 </script>
 
 
 <div class="container">
-	<div>{data.map(v => v.name)}</div>
-
-	<Table {data} reorderable resizeable={false}>
-		{#snippet content({ Column })}
-			<Column id='name'>
-				{#snippet header()}
-					Name
-				{/snippet}
-				{#snippet row(item)}
-					{item.name}
-				{/snippet}
-			</Column>
-			<Column id='age'>
-				{#snippet header()}
-					Age
-				{/snippet}
-				{#snippet row(item)}
-					{item.age}
-				{/snippet}
-			</Column>
-		{/snippet}
-	</Table>
+	<Table auto {data} reorderable resizeable={false} />
 </div>
+
+<ol>
+	{#each data.map(v => v.name) as name}
+		<li>{name}</li>
+	{/each}
+</ol>
 
 <style>
 

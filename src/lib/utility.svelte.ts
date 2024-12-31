@@ -97,3 +97,29 @@ export function assignDescriptors<T extends AnyRecord, B extends AnyRecord>(targ
 	}
 	return target
 }
+
+/** Capitalize by space */
+export function capitalize(str: string) {
+	let parts = str.split(' ')
+	let result = ''
+	for(let part of parts) {
+		result += part.charAt(0).toUpperCase() + part.slice(1) + ' '
+	}
+	return result
+}
+
+/** Split words when going from lower case to uppercase; `someWords-split` -> `some Word Split...` */
+export function segmentize(str: string) {
+	let result = ''
+	for (let i = 0; i < str.length; i++) {
+		const char = str[i]
+		const prevChar = i > 0 ? str[i - 1] : ''
+		if ((char === '-' || char === char.toUpperCase()) && prevChar !== ' ' && prevChar !== prevChar.toUpperCase()) {
+			result += ' '
+			if(char === '-')
+				continue
+		}
+		result += char
+	}
+	return result.trim()
+}

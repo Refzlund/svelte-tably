@@ -21,7 +21,7 @@
 	import { TableState, type HeaderSelectCtx, type RowCtx, type RowSelectCtx, type TableProps } from './table.svelte.js'
 	import Panel from '$lib/panel/Panel.svelte'
 	import Column from '$lib/column/Column.svelte'
-	import { assignDescriptors, fromProps, mounted } from '$lib/utility.svelte.js'
+	import { assignDescriptors, capitalize, fromProps, mounted, segmentize } from '$lib/utility.svelte.js'
 	import { conditional } from '$lib/conditional.svelte.js'
 	import { ColumnState, type RowColumnCtx } from '$lib/column/column.svelte.js'
 	import Expandable from '$lib/expandable/Expandable.svelte'
@@ -55,7 +55,7 @@
 		panel: _panel = $bindable(),
 		data: _data = $bindable([]),
 		...restProps
-	}: TableProps<T> & { content: ContentSnippet } = $props()
+	}: TableProps<T> & { content?: ContentSnippet } = $props()
 
 	const properties = fromProps(restProps, {
 		selected: [() => _selected, v => _selected = v],
@@ -346,7 +346,7 @@
 {/snippet}
 
 {#snippet dragSnippet()}
-	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style='opacity: .3'>
 		<path
 			fill="currentColor"
 			d="M5.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m0 4.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m1.5 3a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0M10.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3M12 8a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m-1.5 6a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3"
@@ -662,10 +662,10 @@
 			id='__fixed'
 			{table}
 			fixed
-			width={Math.max(56, 0
+			width={Math.max(48, 0
 				+ (select && show !== 'never' ? 34 : 0) 
 				+ (reorderable ? 34 : 0)
-				+ (expandable?.options.chevron !== 'never' ? 34 : 0)
+				+ (expandable && expandable?.options.chevron !== 'never' ? 34 : 0)
 			)}
 			resizeable={false}
 		>
@@ -738,6 +738,21 @@
 			{/snippet}
 		</Column>
 	{/if}
+{/if}
+
+{#if table.options.auto}
+	{#each Object.keys(data.current[0] || {}) as key}
+		<Column
+			id={key}
+			value={r => r[key]}
+			header={capitalize(segmentize(key))}
+			sort={
+				typeof data.current[0]?.[key] === 'number'
+					? (a, b) => a - b
+					: (a, b) => String(a).localeCompare(String(b))
+			}
+		/>
+	{/each}
 {/if}
 
 {@render content?.({
@@ -1045,8 +1060,15 @@
 	}
 
 	.row > .column {
+		background-color: var(--tably-bg);
 		padding: var(--tably-padding-y) 0;
 	}
+
+	:global(#runic-drag .row) {
+		border: 1px solid var(--tably-border-grid);
+		border-top: 2px solid var(--tably-border-grid);
+	}
+
 	.row > * {
 		border-left: 1px solid var(--tably-border-grid);
 		border-bottom: 1px solid var(--tably-border-grid);
