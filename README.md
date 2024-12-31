@@ -18,9 +18,10 @@ A high performant, feature rich, dynamic table
 - [x] select
 - [x] filtering
 - [x] reorderable table
-- [ ] row context-menu
+- [x] Row context menus
 - [x] Expandable rows
 - [x] to CSV
+- [ ] Auto: Table based on data, sortable
 
 ### Usage Notes
 
@@ -38,8 +39,8 @@ A high performant, feature rich, dynamic table
 </script>
 
 <Table {data} panel={activePanel} select bind:selected>
-    {#snippet content({ Column, Panel, state, data })}
-        <Column id='name' sticky>
+    {#snippet content({ Column, Panel, Expandable, Row, state, data })}
+        <Column id='name' sticky sort>
             {#snippet header()}
                 Name
             {/snippet}
@@ -52,9 +53,10 @@ A high performant, feature rich, dynamic table
                 {data.length}
             {/snippet}
         </Column>
-        <Column ...>
-           ...
-        </Column>
+		
+		<!-- Simplified -->
+        <Column id='age' header='Age' value={r => r.age} sort={(a,b) => a - b} />
+
         <!-- If you want to sort/filter a virtual value, that does not exist in the data -->
         <Column id='virtual' value={row => row.age > 18}>
             ...
@@ -63,6 +65,21 @@ A high performant, feature rich, dynamic table
             {/snippet}
             ...
         </Column>
+
+		<Expandable click={false}>
+			{#snippet content(item, ctx)}
+				...
+			{/snippet}
+		</Expandable>
+
+		<Row onclick={...} oncontextmenu={...}>
+			{#snippet contextHeader()}
+				...
+			{/snippet}
+			{#snippet context(item, ctx)}
+				...
+			{/snippet}
+		</Row>
 
         <Panel id='columns'>
             <!-- Anything you might like -->

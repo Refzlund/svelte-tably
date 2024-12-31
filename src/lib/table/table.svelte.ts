@@ -5,6 +5,7 @@ import { Data } from './data.svelte.js'
 import { assign, boundAssign, boundPick, pick, type AnyRecord, type Simplify } from '$lib/utility.svelte.js'
 import type { ExpandableState } from '$lib/expandable/expandable.svelte.js'
 import type { ItemState } from 'runic-reorder'
+import type { RowState } from '$lib/row/row.svelte.js'
 
 export type HeaderSelectCtx<T extends AnyRecord = any> = {
 	isSelected: boolean
@@ -86,6 +87,7 @@ export class TableState<T extends AnyRecord> {
 	columns = $state({}) as Record<string, ColumnState<T, any>>
 	panels = $state({}) as Record<string, PanelState<T>>
 	expandable = $state() as undefined | ExpandableState<T>
+	row = $state() as undefined | RowState<T>
 
 	/** Currently selected items */
 	get selected(): T[] { return this.#props.selected ??= [] }

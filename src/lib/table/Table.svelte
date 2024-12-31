@@ -13,13 +13,13 @@
 </script>
 
 <script lang="ts">
-	import { tick, untrack, type Snippet } from 'svelte'
+	import { type Snippet } from 'svelte'
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
 	import { Virtualization } from './virtualization.svelte.js'
 	import { TableState, type HeaderSelectCtx, type RowCtx, type RowSelectCtx, type TableProps } from './table.svelte.js'
-	import Panel, { PanelTween } from '$lib/panel/Panel.svelte'
+	import Panel from '$lib/panel/Panel.svelte'
 	import Column from '$lib/column/Column.svelte'
 	import { assignDescriptors, fromProps, mounted } from '$lib/utility.svelte.js'
 	import { conditional } from '$lib/conditional.svelte.js'
@@ -27,6 +27,8 @@
 	import Expandable from '$lib/expandable/Expandable.svelte'
 	import { SizeTween } from '$lib/size-tween.svelte.js'
 	import { on } from 'svelte/events'
+	import Row from '$lib/row/Row.svelte'
+	
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -40,6 +42,7 @@
 		}
 		Panel: typeof Panel<T>
 		Expandable: typeof Expandable<T>
+		Row: typeof Row<T>
 		readonly table: TableState<T>
 		readonly data: T[]
 	}
@@ -95,18 +98,28 @@
 	/** grid-template-columns for widths */
 	const style = $derived.by(() => {
 		if (!mount.isMounted) return ''
-		const templateColumns = `
-	#${table.id} > .headers,
-	tr.row[data-svelte-tably='${table.id}'],
-	#${table.id} > tfoot > tr,
-	#${table.id} > .content > .virtual.bottom {
-		grid-template-columns: ${columns
+
+		const context = table.row?.snippets.context ? table.row?.options.context.width : '' 
+
+		const templateColumns = columns
 			.map((column, i, arr) => {
 				const width = getWidth(column.id)
 				if (i === arr.length - 1) return `minmax(${width}px, 1fr)`
 				return `${width}px`
 			})
-			.join(' ')};
+			.join(' ') + context
+
+		const theadTempla3teColumns = `
+	#${table.id} > thead > tr,
+	#${table.id} > tfoot > tr {
+		grid-template-columns: ${templateColumns};
+	}
+		`
+
+		const tbodyTemplateColumns = `
+	[data-area-class='${table.id}'] tr.row,
+	#${table.id} > tbody::after {
+		grid-template-columns: ${templateColumns};
 	}
 		`
 
@@ -124,12 +137,12 @@
 			.join('')
 
 		const columnStyling = columns.map(column => !column.options.style ? '' : `
-		#${table.id} .column[data-column='${column.id}'] {
+		[data-area-class='${table.id}'] .column[data-column='${column.id}'] {
 			${column.options.style}
 		}
 		`).join('')
 
-		return templateColumns + stickyLeft + columnStyling
+		return theadTempla3teColumns + tbodyTemplateColumns + stickyLeft + columnStyling
 	})
 
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
@@ -261,6 +274,18 @@
 		if(where !== 'row') return
 		if(column.options.onclick) {
 			$effect(() => on(node, 'click', e => column.options.onclick!(e, value())))
+		}
+	}
+
+	function addRowEvents(
+		node: HTMLTableRowElement,
+		ctx: RowCtx<T>
+	) {
+		if(table.row?.events.onclick) {
+			$effect(() => on(node, 'click', e => table.row?.events.onclick!(e, ctx)))
+		}
+		if(table.row?.events.oncontextmenu) {
+			$effect(() => on(node, 'contextmenu', e => table.row?.events.oncontextmenu!(e, ctx)))
 		}
 	}
 
@@ -413,6 +438,10 @@
 	{/each}
 {/snippet}
 
+{#snippet defaultRow(item: T, ctx: RowColumnCtx<T, any>)}
+	{ctx.value}
+{/snippet}
+
 {#snippet rowSnippet(item: T, itemState?: ItemState<T>)}
 	{@const index = itemState?.index ?? 0}
 
@@ -444,10 +473,8 @@
 
 	<tr
 		aria-rowindex={index + 1}
-		data-svelte-tably={table.id}
 		style:opacity={itemState?.positioning ? 0 : 1}
 		class='row'
-		class:hover={hoveredRow === item}
 		class:dragging={itemState?.dragging}
 		class:selected={table.selected?.includes(item)}
 		class:first={index === 0}
@@ -456,6 +483,7 @@
 		{...(itemState?.dragging ? { 'data-svelte-tably': table.id } : {})}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
+		use:addRowEvents={ctx}
 		onclick={(e) => {
 			if (table.expandable?.options.click === true) {
 				let target = e.target as HTMLElement
@@ -467,7 +495,7 @@
 		}}
 	>
 		{@render columnsSnippet(
-			(column) => column.snippets.row,
+			(column) => column.snippets.row ?? defaultRow,
 			(column) => {
 				return [
 					item,
@@ -480,6 +508,17 @@
 			},
 			'row'
 		)}
+		{#if table.row?.snippets.context}
+			{#if table.row?.snippets.contextHeader || !table.row?.options.context.hover || hoveredRow === item}
+				<td
+					class='context-col'
+					class:hover={!table.row?.snippets.contextHeader && table.row?.options.context.hover}
+					class:hidden={table.row?.options.context.hover && table.row?.snippets.contextHeader && hoveredRow !== item}
+				>
+					{@render table.row?.snippets.context?.(item, ctx)}
+				</td>
+			{/if}
+		{/if}
 	</tr>
 
 	{@const expandableTween = new SizeTween(
@@ -510,20 +549,30 @@
 >
 	{#if columns.some(v => v.snippets.header)}
 		<thead class='headers' bind:this={elements.headers}>
-			{@render columnsSnippet(
-				(column) => column.snippets.header,
-				() => [{ 
-					get header() { return true },
-					get data() { return data.current }
-				}],
-				'header'
-			)}
+			<tr style='min-width: {tbody.width}px'>
+				{@render columnsSnippet(
+					(column) => column.snippets.header,
+					() => [{ 
+						get header() { return true },
+						get data() { return data.current }
+					}],
+					'header'
+				)}
+				{#if table.row?.snippets.contextHeader}
+					<th
+						class='context-col'
+					>
+						{@render table.row?.snippets.contextHeader()}
+					</th>
+				{/if}
+			</tr>
+			<tr style='width:400px;background:none;pointer-events:none;'></tr>
 		</thead>
 	{/if}
 
 	<tbody
 		class='content'
-		use:reorderArea={{ axis: 'y' }}
+		use:reorderArea={{ axis: 'y', class: table.id }}
 		bind:this={virtualization.viewport.element}
 		onscrollcapture={onscroll}
 		bind:clientHeight={virtualization.viewport.height}
@@ -559,6 +608,7 @@
 					'statusbar'
 				)}
 			</tr>
+			<tr style='width:400px;background:none;pointer-events:none;'></tr>
 		</tfoot>
 	{/if}
 
@@ -595,7 +645,7 @@
 {/snippet}
 
 {#snippet rowSelected(ctx: RowSelectCtx<T>)}
-	<input type='checkbox' bind:checked={ctx.isSelected} />
+	<input type='checkbox' bind:checked={ctx.isSelected} tabindex='-1' />
 {/snippet}
 
 {#if table.options.select || table.options.reorderable || table.expandable}
@@ -677,9 +727,11 @@
 							}
 						})}
 					{/if}
-					{#if expandable && (row.expanded || expandable.options.chevron === 'always' || (row.isHovered && expandable.options.chevron === 'hover'))}
-						<button class='expand-row' onclick={() => row.expanded = !row.expanded}>
-							{@render chevronSnippet(row.expanded ? 180 : 90)}
+					{#if expandable && expandable?.options.chevron !== 'never'}
+						<button class='expand-row' tabindex='-1' onclick={() => row.expanded = !row.expanded}>
+							{#if row.expanded || expandable.options.chevron === 'always' || (row.isHovered && expandable.options.chevron === 'hover')}
+								{@render chevronSnippet(row.expanded ? 180 : 90)}
+							{/if}
 						</button>
 					{/if}
 				</div>
@@ -692,6 +744,7 @@
 	Column,
 	Panel,
 	Expandable,
+	Row,
 	get table() {
 		return table
 	},
@@ -708,11 +761,49 @@
 		background-color: inherit;
 	}
 
+	.context-col {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: sticky;
+		right: 0;
+		height: 100%;
+		z-index: 3;
+		padding: 0;
+
+		&.hover {
+			position: absolute;
+		}
+		&.hidden {
+			pointer-events: none;
+			user-select: none;
+			border-left: none;
+			background: none;
+			> :global(*) {
+				opacity: 0;
+			}
+		}
+	}
+
+	:global(:root) {
+		--tably-color: hsl(0, 0%, 0%);
+		--tably-bg: hsl(0, 0%, 100%);
+		--tably-statusbar: hsl(0, 0%, 98%);
+
+		--tably-border: hsl(0, 0%, 90%);
+		--tably-border-grid: hsl(0, 0%, 98%);
+
+		--tably-padding-x: 1rem;
+		--tably-padding-y: 0.5rem;
+
+		--tably-radius: 0.25rem;
+	}
+
 	.svelte-tably {
 		position: relative;
 		overflow: visible;
 	}
-
+	
 	.expandable {
 		position: relative;
 		
@@ -738,7 +829,7 @@
 		cursor: pointer;
 		background-color: transparent;
 		color: inherit;
-		width: 22px;
+		width: 20px;
 		height: 100%;
 
 		> svg {
@@ -767,10 +858,13 @@
 		justify-items: end;
 		margin: 0;
 		margin-left: auto;
-		margin-right: var(--tably-padding-x, 1rem);
 		> svg {
 			transition: transform 0.15s ease;
 		}
+	}
+
+	th:not(:last-child) .sorting-icon {
+		margin-right: var(--tably-padding-x);
 	}
 
 	.__fixed {
@@ -784,13 +878,6 @@
 		right: 0;
 		bottom: 0;
 		width: 100%;
-	}
-
-	.first .__fixed {
-		top: var(--tably-padding-y, 0.5rem);
-	}
-	.last .__fixed {
-		bottom: var(--tably-padding-y, 0.5rem);
 	}
 
 	tbody::before,
@@ -844,17 +931,6 @@
 		}
 	}
 
-	.headers,
-	.statusbar {
-		/* So that the scrollbar doesn't cause the headers/statusbar to shift */
-		padding-right: 11px;
-	}
-
-	.table {
-		color: var(--tably-color, hsl(0, 0%, 0%));
-		background-color: var(--tably-bg, hsl(0, 0%, 100%));
-	}
-
 	.sticky {
 		position: sticky;
 		/* right: 100px; */
@@ -862,15 +938,22 @@
 	}
 
 	.sticky.border {
-		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
+		border-right: 1px solid var(--tably-border);
 	}
 
-	.headers > .column {
-		border-right: 1px solid var(--tably-border, hsl(0, 0%, 90%));
+	.headers > tr > .column {
 		overflow: hidden;
-		padding: var(--tably-padding-y, 0.5rem) 0;
+		padding: var(--tably-padding-y) 0;
 		cursor: default;
 		user-select: none;
+
+		&.sticky.border {
+			border-right-color: var(--tably-border);
+		}
+
+		&:last-child {
+			border-right: none;
+		}
 
 		&.sortable {
 			cursor: pointer;
@@ -883,32 +966,41 @@
 
 	.table {
 		display: grid;
-		height: 100%;
+		height: auto;
+		max-height: 100%;
 		position: relative;
 
+		color: var(--tably-color);
+		background-color: var(--tably-bg);
+
 		grid-template-areas:
-			'headers     panel'
-			'rows        panel'
-			'statusbar   panel';
+			'headers    panel'
+			'rows       panel'
+			'statusbar  panel';
 
 		grid-template-columns: auto min-content;
 		grid-template-rows: auto 1fr auto;
 
-		border: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		border-radius: var(--tably-radius, 0.25rem);
-
-		max-height: 100%;
+		border: 1px solid var(--tably-border);
+		border-radius: var(--tably-radius);
 	}
 
 	.headers {
+		display: flex;
 		grid-area: headers;
 		z-index: 2;
 		overflow: hidden;
 	}
 
-	.headers > .column {
+	.headers > tr > .column {
 		width: auto !important;
-		border-bottom: 1px solid var(--tably-border, hsl(0, 0%, 90%));
+		border-bottom: 1px solid var(--tably-border);
+	}
+	.headers > tr {
+		> .column, > .context-col {
+			border-bottom: 1px solid var(--tably-border);
+			border-left: 1px solid var(--tably-border-grid);
+		}
 	}
 
 	.content {
@@ -918,21 +1010,21 @@
 		grid-area: rows;
 		scrollbar-width: thin;
 		overflow: auto;
-		/* height: 100%; */
 	}
 
 	.statusbar {
+		display: flex;
 		grid-area: statusbar;
 		overflow: hidden;
-		background-color: var(--tably-statusbar, hsl(0, 0%, 98%));
+		background-color: var(--tably-statusbar);
 	}
 
 	.statusbar > tr > .column {
-		border-top: 1px solid var(--tably-border, hsl(0, 0%, 90%));
-		padding: calc(var(--tably-padding-y, 0.5rem) / 2) 0;
+		border-top: 1px solid var(--tably-border);
+		padding: calc(var(--tably-padding-y) / 2) 0;
 	}
 
-	.headers,
+	.headers > tr,
 	.row,
 	.statusbar > tr {
 		position: relative;
@@ -942,25 +1034,22 @@
 
 		& > .column {
 			display: flex;
-			padding-left: var(--tably-padding-x, 1rem);
+			padding-left: var(--tably-padding-x);
 			overflow: hidden;
 		}
 
-		& > *:last-child {
+		& > *:last-child:not(.context-col) {
 			width: 100%;
-			padding-right: var(--tably-padding-x, 1rem);
+			padding-right: var(--tably-padding-x);
 		}
 	}
 
-	.row:first-child:not(.dragging) > * {
-		padding-top: calc(var(--tably-padding-y, 0.5rem) + calc(var(--tably-padding-y, 0.5rem) / 2));
+	.row > .column {
+		padding: var(--tably-padding-y) 0;
 	}
-	.row:last-child:not(.dragging) > * {
-		padding-bottom: calc(var(--tably-padding-y, 0.5rem) + calc(var(--tably-padding-y, 0.5rem) / 2));
-	}
-
 	.row > * {
-		padding: calc(var(--tably-padding-y, 0.5rem) / 2) 0;
+		border-left: 1px solid var(--tably-border-grid);
+		border-bottom: 1px solid var(--tably-border-grid);
 	}
 
 	.panel {
@@ -968,7 +1057,7 @@
 		grid-area: panel;
 		height: 100%;
 		overflow: hidden;
-		border-left: 1px solid var(--tably-border, hsl(0, 0%, 90%));
+		border-left: 1px solid var(--tably-border);
 		
 		z-index: 4;
 
@@ -980,7 +1069,7 @@
 			width: min-content;
 			overflow: auto;
 			scrollbar-width: thin;
-			padding: var(--tably-padding-y, 0.5rem) 0;
+			padding: var(--tably-padding-y) 0;
 		}
 	}
 </style>

@@ -7,12 +7,16 @@
 	import { ColumnState } from '$lib/column/column.svelte.js'
 
 	function createData(size: number) {
-		return Array(size).fill(null).map((_, i) => ({
+		return Array(size).fill(null).map(person)
+	}
+
+	function person() {
+		return {
 			name: faker.person.fullName(),
 			age: Math.floor(Math.random() * 60) + 8,
 			email: faker.internet.email()
-		}))
-	} 
+		}
+	}
 
 	let data = $state(createData(500))	
 
@@ -34,6 +38,7 @@
 	<button onclick={() => panel = panel ? undefined : 'columns'}>Toggle panel</button>
 	<button onclick={() => selectable = !selectable}>Toggle selectability</button>
 
+	<button onclick={() => data = createData(0)}>0</button>
 	<button onclick={() => data = createData(5)}>5</button>
 	<button onclick={() => data = createData(50)}>50</button>
 	<button onclick={() => data = createData(500)}>500</button>
@@ -71,8 +76,8 @@
 
 <div class='container'>
 	<Table bind:this={table} bind:data bind:panel {href} select={selectable} {filters}>
-		{#snippet content({ Column, Panel, Expandable, table, data })}
-			<Column id='id' sticky width={100} resizeable={false} onclick={(_, r) => r.expanded = !r.expanded}>
+		{#snippet content({ Column, Panel, Expandable, Row, table, data })}
+			<Column id='id' sticky show={false} width={100} resizeable={false} onclick={(_, r) => r.expanded = !r.expanded}>
 				{#snippet header(ctx)}
 					{#if !ctx.header}
 						<!-- Only show when rendered elsewhere -->
@@ -86,13 +91,7 @@
 					</span>
 				{/snippet}
 			</Column>
-			<Column id='name' sticky sortby value={r => r.name} sort filter={(v) => v.includes(search)} style='font-weight: 500;'>
-				{#snippet header()}
-					Name
-				{/snippet}
-				{#snippet row(item, row)}
-					{item.name}
-				{/snippet}
+			<Column id='name' width={200} sticky sortby header='Name' value={r => r.name} sort filter={(v) => v.includes(search)} style='font-weight: 500;'>
 				{#snippet statusbar()}
 					<small>{data.length} people</small>
 				{/snippet}
@@ -108,18 +107,28 @@
 					<small>{(data.reduce((a, b) => a + b.age, 0) / data.length).toFixed(2)} avg.</small>
 				{/snippet}
 			</Column>
-			<Column id='email' value={r => r.email} sort>
-				{#snippet header()} E-mail {/snippet}
-				{#snippet row(item)} {item.email} {/snippet}
-			</Column>
+			<Column id='email' width={275} header='E-mail' value={r => r.email} sort />
 			<Column id='virtual-item-that-does-not-exist-in-data' value={r => r.age > 18} sort={(a,b) => Number(a) - Number(b)}>
 				{#snippet header()}
 					Maturity
 				{/snippet}
-				{#snippet row(item, row)}
-					{row.value ? 'Adult' : 'Adolescent'}
+				{#snippet row(item, ctx)}
+					{ctx.value ? 'Adult' : 'Adolescent'}
 				{/snippet}
 			</Column>
+
+			<Row contextOptions={{ hover: true }} oncontextmenu={(e) => { e.preventDefault(); console.log('hello') }}>
+				{#snippet contextHeader()}
+					<button class='more add' tabindex='-1' onclick={() => data.push(person())}>
+						<Icon icon='add' />
+					</button>
+				{/snippet}
+				{#snippet context(item, ctx)}
+					<button class='more' tabindex='-1'>
+						<Icon icon='more' />
+					</button>
+				{/snippet}
+			</Row>
 
 			<Expandable click={false}>
 				{#snippet content(item, ctx)}
@@ -188,9 +197,32 @@
 		gap: 2rem;
 		align-items: center;
 		padding: 1rem 2rem;
-		background-color: hsl(0, 0%, 90%);
+		background-color: hsl(0, 0%, 98%);
 		h5 {
 			margin: 0;
+		}
+	}
+
+	.more {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: transparent;
+		border: none;
+		cursor: pointer;
+		height: 24px;
+		width: 24px;
+		padding: 0;
+		margin: 0 .5rem;
+		transition: .1s ease;
+		border-radius: .25rem;
+		color: hsl(0, 0%, 50%);
+		&:hover {
+			background-color: hsl(0, 0%, 97%);
+		}
+
+		&.add :global(svg) {
+			transform: scale(.85);
 		}
 	}
 

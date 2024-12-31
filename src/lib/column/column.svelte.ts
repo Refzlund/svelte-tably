@@ -2,6 +2,7 @@ import { type Snippet } from 'svelte'
 import { TableState, type RowCtx } from '../table/table.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import { assign, pick, type AnyRecord } from '../utility.svelte.js'
+import { getDefaultHeader } from './Column.svelte'
 
 export type ColumnProps<T extends AnyRecord, V> = (
 	& {
@@ -16,7 +17,7 @@ export type ColumnProps<T extends AnyRecord, V> = (
 	} : never
 
 
-type HeaderCtx<T> = {
+export interface HeaderCtx<T> {
 	readonly data: T[]
 	/**
 	 * Is true when displaying in the header,
@@ -35,8 +36,8 @@ export type StatusbarCtx<T extends AnyRecord> = {
 }
 
 
-type ColumnSnippets<T extends AnyRecord, V> = {
-	header?: Snippet<[ctx: HeaderCtx<T>]>
+export type ColumnSnippets<T extends AnyRecord, V> = {
+	header?: Snippet<[ctx: HeaderCtx<T>]> | string
 	row?: Snippet<[item: T, ctx: RowColumnCtx<T, V>]>
 	statusbar?: Snippet<[ctx: StatusbarCtx<T>]>
 }
@@ -120,11 +121,11 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 	table: TableState<T>
 
 	snippets = $derived({
-		header: this.#props.header,
+		header: typeof this.#props.header === 'string' ? getDefaultHeader(this.#props.header) : this.#props.header,
 		/** Title is the header-snippet, with header-ctx: `{ header: false }` */
 		title: (...args: any[]) => {
 			const getData = () => this.table.data.current
-			return this.#props.header?.(...[args[0], () => ({
+			return this.snippets.header?.(...[args[0], () => ({
 				get header() { return false },
 				get data() {
 					return getData()
