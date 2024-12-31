@@ -309,14 +309,18 @@
 					<tr>
 						{#each renderedColumns as column}
 							<td>
-								{@render column.snippets.row?.(row, {
-									index: i,
-									value: column.options.value?.(row),
-									isHovered: false,
-									itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
-									selected: false,
-									expanded: false
-								})}
+								{#if column.snippets.row}
+									{@render column.snippets.row(row, {
+										index: i,
+										value: column.options.value?.(row),
+										isHovered: false,
+										itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
+										selected: false,
+										expanded: false
+									})}
+								{:else}
+									{column.options.value?.(row)}
+								{/if}
 							</td>
 						{/each}
 					</tr>
