@@ -44,7 +44,6 @@
 		Expandable: typeof Expandable<T>
 		Row: typeof Row<T>
 		readonly table: TableState<T>
-		readonly data: T[]
 	}
 
 	type ContentSnippet = Snippet<[context: ContentCtx<T>]>
@@ -73,7 +72,6 @@
 	>
 	
 	const table = new TableState<T>(properties) as TableState<T>
-	const data = table.data
 	
 	const virtualization = new Virtualization(table)
 	
@@ -304,7 +302,7 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each data.current as row, i}
+			{#each table.data as row, i}
 				{#if (csv.selected && table.selected.includes(row)) || !csv.selected}
 					<tr>
 						{#each renderedColumns as column}
@@ -378,12 +376,12 @@
 				data-column={column.id}
 				class:header={isHeader}
 				class:sortable
-				use:conditional={[isHeader, (node) => data.sortAction(node, column.id)]}
+				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
-				{#if isHeader && data.sortby === column.id && sortable}
+				{#if isHeader && table.dataState.sortby === column.id && sortable}
 					<span class='sorting-icon'>
-						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
 			</svelte:element>
@@ -405,12 +403,12 @@
 				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
 				class:border={i == sticky.length - 1}
 				class:sortable
-				use:conditional={[isHeader, (node) => data.sortAction(node, column.id)]}
+				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
-				{#if isHeader && data.sortby === column.id && sortable}
+				{#if isHeader && table.dataState.sortby === column.id && sortable}
 					<span class='sorting-icon'>
-						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
 			</svelte:element>
@@ -429,12 +427,12 @@
 				use:observeColumnWidth={isHeader}
 				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
 				class:sortable
-				use:conditional={[isHeader, (node) => data.sortAction(node, column.id)]}
+				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
-				{#if isHeader && data.sortby === column.id && sortable}
+				{#if isHeader && table.dataState.sortby === column.id && sortable}
 					<span class='sorting-icon'>
-						{@render chevronSnippet(data.sortReverse ? 0 : 180)}
+						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
 			</svelte:element>
@@ -549,7 +547,7 @@
 	id={table.id}
 	class='table svelte-tably'
 	style='--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;'
-	aria-rowcount={data.current.length}
+	aria-rowcount={table.data.length}
 >
 	{#if columns.some(v => v.snippets.header)}
 		<thead class='headers' bind:this={elements.headers}>
@@ -558,7 +556,7 @@
 					(column) => column.snippets.header,
 					() => [{ 
 						get header() { return true },
-						get data() { return data.current }
+						get data() { return table.data }
 					}],
 					'header'
 				)}
@@ -588,7 +586,7 @@
 					return virtualization.area
 				},
 				get modify() {
-					return data.origin
+					return table.dataState.origin
 				},
 				get startIndex() {
 					return virtualization.topIndex
@@ -607,7 +605,7 @@
 				{@render columnsSnippet(
 					(column) => column.snippets.statusbar,
 					() => [{
-						get data() { return data.current }
+						get data() { return table.data }
 					}],
 					'statusbar'
 				)}
@@ -632,7 +630,7 @@
 						return table
 					},
 					get data() {
-						return data.current
+						return table.data
 					}
 				})}
 			</div>
@@ -681,11 +679,11 @@
 					{#if select}
 						{@render headerSnippet({
 							get isSelected() {
-								return data.current.length === table.selected?.length && data.current.length > 0
+								return table.data.length === table.selected?.length && table.data.length > 0
 							},
 							set isSelected(value) {
 								if (value) {
-									table.selected = data.current
+									table.selected = table.data
 								} else {
 									table.selected = []
 								}
@@ -696,7 +694,7 @@
 							get indeterminate() {
 								return (
 									(table.selected?.length || 0) > 0 &&
-									data.current.length !== table.selected?.length
+									table.data.length !== table.selected?.length
 								)
 							}
 						})}
@@ -727,7 +725,7 @@
 								return item
 							},
 							get data() {
-								return data.current
+								return table.data
 							}
 						})}
 					{/if}
@@ -745,13 +743,13 @@
 {/if}
 
 {#if table.options.auto}
-	{#each Object.keys(data.current[0] || {}) as key}
+	{#each Object.keys(table.data[0] || {}) as key}
 		<Column
 			id={key}
 			value={r => r[key]}
 			header={capitalize(segmentize(key))}
 			sort={
-				typeof data.current[0]?.[key] === 'number'
+				typeof table.data[0]?.[key] === 'number'
 					? (a, b) => a - b
 					: (a, b) => String(a).localeCompare(String(b))
 			}
@@ -766,9 +764,6 @@
 	Row,
 	get table() {
 		return table
-	},
-	get data() {
-		return data.current
 	}
 })}
 

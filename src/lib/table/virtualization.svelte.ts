@@ -25,7 +25,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 	constructor(table: TableState<T>) {
 		let ticked = $state(false)
 		$effect.pre(() => {
-			table.data.origin
+			table.dataState.origin
 			untrack(() => {
 				ticked = false
 				requestAnimationFrame(() => ticked = true)
@@ -34,7 +34,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 
 		$effect(() => {
 			if(!ticked) return
-			table.data.current
+			table.dataState.current
 			untrack(() => {
 				if (!this.viewport.element) {
 					this.#heightPerItem = 8
@@ -57,8 +57,8 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 			if (!ticked) return
 			this.scrollTop
 			this.#heightPerItem
-			table.data.current.length
-			table.data.current
+			table.dataState.current.length
+			table.dataState.current
 			untrack(() => {
 				if (!waitAnimationFrame) {
 					setTimeout(() => {
@@ -69,7 +69,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 
 						this.#virtualTop = virtualTop
 
-						let virtualBottom = this.#heightPerItem * table.data.current.length - virtualTop - this.#spacing * 4
+						let virtualBottom = this.#heightPerItem * table.dataState.current.length - virtualTop - this.#spacing * 4
 						virtualBottom = Math.max(virtualBottom, 0)
 						this.#virtualBottom = virtualBottom
 					}, 1000 / 60)
@@ -80,16 +80,16 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 
 		$effect(() => {
 			if (!ticked) return
-			table.data.sortReverse
-			table.data.sortby
+			table.dataState.sortReverse
+			table.dataState.sortby
 			this.#heightPerItem
 			this.#virtualTop
-			table.data.current.length
-			table.data.current
+			table.dataState.current.length
+			table.dataState.current
 			untrack(() => {
 				this.#topIndex = Math.round(this.#virtualTop / this.#heightPerItem || 0)
 				const end = this.#topIndex + this.#renderItemLength
-				this.#area = table.data.current.slice(this.#topIndex, end)
+				this.#area = table.dataState.current.slice(this.#topIndex, end)
 			})
 		})
 	}

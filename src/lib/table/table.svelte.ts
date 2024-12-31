@@ -83,7 +83,11 @@ export class TableState<T extends AnyRecord> {
 
 	id = $state() as string
 
-	data: Data<T>
+	dataState: Data<T> = $state({} as Data<T>)
+
+	data = $derived(
+		this.dataState.current ?? []
+	)
 
 	columns = $state({}) as Record<string, ColumnState<T, any>>
 	panels = $state({}) as Record<string, PanelState<T>>
@@ -127,7 +131,7 @@ export class TableState<T extends AnyRecord> {
 			}
 
 			if (state.defaults.sortby)
-				this.data.sortBy(key)
+				this.dataState.sortBy(key)
 
 			if (state.options.fixed) {
 				this.positions.fixed.push(state)
@@ -162,7 +166,7 @@ export class TableState<T extends AnyRecord> {
 	constructor(tableProps: TableProps<T>) {
 		this.#props = tableProps
 		this.id = tableProps.id ?? Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
-		this.data = new Data(this, tableProps)
+		this.dataState = new Data(this, tableProps)
 
 		setContext('svelte-tably', this)
 	}

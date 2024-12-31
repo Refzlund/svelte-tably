@@ -75,7 +75,7 @@
 
 <div class='container'>
 	<Table bind:this={table} bind:data bind:panel {href} select={selectable} {filters}>
-		{#snippet content({ Column, Panel, Expandable, Row, table, data })}
+		{#snippet content({ Column, Panel, Expandable, Row, table })}
 			<Column id='id' sticky show={false} width={100} resizeable={false} onclick={(_, r) => r.expanded = !r.expanded}>
 				{#snippet header(ctx)}
 					{#if !ctx.header}
@@ -92,7 +92,7 @@
 			</Column>
 			<Column id='name' width={200} sticky sortby header='Name' value={r => r.name} sort filter={(v) => v.includes(search)} style='font-weight: 500;'>
 				{#snippet statusbar()}
-					<small>{data.length} people</small>
+					<small>{table.data.length} people</small>
 				{/snippet}
 			</Column>
 			<Column id='age' width={100} value={r => r.age} sort={(a, b) => a - b}>
@@ -103,7 +103,7 @@
 					<span style='width: 100%; text-align: right; padding-right: 1rem; font-variant-numeric: tabular-nums;'>{item.age}</span>
 				{/snippet}
 				{#snippet statusbar()}
-					<small>{(data.reduce((a, b) => a + b.age, 0) / data.length).toFixed(2)} avg.</small>
+					<small>{(table.data.reduce((a, b) => a + b.age, 0) / table.data.length).toFixed(2)} avg.</small>
 				{/snippet}
 			</Column>
 			<Column id='email' width={275} header='E-mail' value={r => r.email} sort />

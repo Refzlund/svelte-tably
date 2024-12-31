@@ -54,7 +54,7 @@ export class Data<T extends Record<PropertyKey, unknown>> {
 			sort = (a, b) => String(a).localeCompare(String(b))
 		}
 
-		if (this.#table.data.sortReverse) {
+		if (this.sortReverse) {
 			this.sorted = this.origin.toSorted((a, b) => sort(value(b), value(a)))
 		} else {
 			this.sorted = this.origin.toSorted((a, b) => sort(value(a), value(b)))
