@@ -25,7 +25,7 @@ export type RowSelectCtx<T extends AnyRecord = any> = {
 }
 
 export interface RowCtx<T extends AnyRecord> {
-	readonly isHovered: boolean
+	readonly rowHovered: boolean
 	readonly index: number
 	readonly itemState: ItemState<T> | undefined
 	selected: boolean
@@ -48,8 +48,6 @@ export type TableProps<T extends AnyRecord> = {
 	 * @default false
 	*/
 	reorderable?: boolean
-	/** Make the rows links */
-	href?: (item: T) => string
 	/** Whether columns in this table can be resized */
 	resizeable?: boolean
 	/** Whether to enable selection */
@@ -112,7 +110,6 @@ export class TableState<T extends AnyRecord> {
 		filters: this.#props.reorderable ? false : (this.#props.filters ?? []),
 		resizeable: this.#props.resizeable ?? true,
 		reorderable: this.#props.reorderable ?? false,
-		href: this.#props.href,
 		select: this.#props.select ?? false,
 		auto: this.#props.auto ?? false
 	})

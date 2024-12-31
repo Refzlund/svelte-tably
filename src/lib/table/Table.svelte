@@ -9,7 +9,6 @@
 -->
 
 <script module lang="ts">
-		
 </script>
 
 <script lang="ts">
@@ -18,7 +17,13 @@
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
 	import { Virtualization } from './virtualization.svelte.js'
-	import { TableState, type HeaderSelectCtx, type RowCtx, type RowSelectCtx, type TableProps } from './table.svelte.js'
+	import {
+		TableState,
+		type HeaderSelectCtx,
+		type RowCtx,
+		type RowSelectCtx,
+		type TableProps
+	} from './table.svelte.js'
 	import Panel from '$lib/panel/Panel.svelte'
 	import Column from '$lib/column/Column.svelte'
 	import { assignDescriptors, capitalize, fromProps, mounted, segmentize } from '$lib/utility.svelte.js'
@@ -28,12 +33,13 @@
 	import { SizeTween } from '$lib/size-tween.svelte.js'
 	import { on } from 'svelte/events'
 	import Row from '$lib/row/Row.svelte'
-	
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
-	type ConstructorReturnType<T extends new (...args: any[]) => any> = T extends new (...args: any[]) => infer K ? K : never
-	type ConstructorParams<T extends new (...args: any[]) => any> = T extends new (...args: infer K) => any ? K : never
+	type ConstructorReturnType<T extends new (...args: any[]) => any> =
+		T extends new (...args: any[]) => infer K ? K : never
+	type ConstructorParams<T extends new (...args: any[]) => any> =
+		T extends new (...args: infer K) => any ? K : never
 
 	type ContentCtx<T extends Record<PropertyKey, unknown>> = {
 		Column: {
@@ -57,9 +63,9 @@
 	}: TableProps<T> & { content?: ContentSnippet } = $props()
 
 	const properties = fromProps(restProps, {
-		selected: [() => _selected, v => _selected = v],
-		panel: [() => _panel, v => _panel = v],
-		data: [() => _data, v => _data = v]
+		selected: [() => _selected, (v) => (_selected = v)],
+		panel: [() => _panel, (v) => (_panel = v)],
+		data: [() => _data, (v) => (_data = v)]
 	}) as TableProps<T>
 
 	const mount = mounted()
@@ -70,14 +76,15 @@
 		'headers' | 'statusbar' | 'rows' | 'virtualTop' | 'virtualBottom' | 'selects',
 		HTMLElement
 	>
-	
+
 	const table = new TableState<T>(properties) as TableState<T>
-	
+
 	const virtualization = new Virtualization(table)
-	
+
 	const panelTween = new SizeTween(() => !!properties.panel)
 
 	let hoveredRow: T | null = $state(null)
+	let hoveredColumn: ColumnState | null = $state(null)
 
 	/** Order of columns */
 	const fixed = $derived(table.positions.fixed)
@@ -97,15 +104,16 @@
 	const style = $derived.by(() => {
 		if (!mount.isMounted) return ''
 
-		const context = table.row?.snippets.context ? table.row?.options.context.width : '' 
+		const context = table.row?.snippets.context ? table.row?.options.context.width : ''
 
-		const templateColumns = columns
-			.map((column, i, arr) => {
-				const width = getWidth(column.id)
-				if (i === arr.length - 1) return `minmax(${width}px, 1fr)`
-				return `${width}px`
-			})
-			.join(' ') + context
+		const templateColumns =
+			columns
+				.map((column, i, arr) => {
+					const width = getWidth(column.id)
+					if (i === arr.length - 1) return `minmax(${width}px, 1fr)`
+					return `${width}px`
+				})
+				.join(' ') + context
 
 		const theadTempla3teColumns = `
 	#${table.id} > thead > tr,
@@ -134,11 +142,17 @@
 			})
 			.join('')
 
-		const columnStyling = columns.map(column => !column.options.style ? '' : `
+		const columnStyling = columns
+			.map((column) =>
+				!column.options.style ?
+					''
+				:	`
 		[data-area-class='${table.id}'] .column[data-column='${column.id}'] {
 			${column.options.style}
 		}
-		`).join('')
+		`
+			)
+			.join('')
 
 		return theadTempla3teColumns + tbodyTemplateColumns + stickyLeft + columnStyling
 	})
@@ -153,15 +167,19 @@
 
 		const observer = new MutationObserver(() => {
 			const width = parseFloat(node.style.width)
-			if(width === columnWidths[key]) return
+			if (width === columnWidths[key]) return
 			columnWidths[key] = width
-			if(!mouseup) {
+			if (!mouseup) {
 				mouseup = true
-				window.addEventListener('click', (e) => {
-					e.preventDefault()
-					e.stopPropagation()
-					mouseup = false
-				}, { once: true, capture: true })
+				window.addEventListener(
+					'click',
+					(e) => {
+						e.preventDefault()
+						e.stopPropagation()
+						mouseup = false
+					},
+					{ once: true, capture: true }
+				)
 			}
 		})
 
@@ -187,7 +205,6 @@
 		elements.statusbar.scrollLeft = target.scrollLeft
 	}
 
-
 	// * --- CSV --- *
 	let csv = $state(false) as false | { selected?: boolean }
 	let csvElement = $state() as undefined | HTMLTableElement
@@ -200,11 +217,11 @@
 	export async function toCSV(opts: CSVOptions = {}) {
 		csv = { selected: !!opts.selected }
 		let resolve: (value: HTMLTableElement) => void
-		const promise = new Promise<HTMLTableElement>(r => resolve = r)
+		const promise = new Promise<HTMLTableElement>((r) => (resolve = r))
 
 		const clean = $effect.root(() => {
 			$effect(() => {
-				if(csvElement) {
+				if (csvElement) {
 					resolve(csvElement)
 				}
 			})
@@ -213,86 +230,80 @@
 		let table = await promise
 		clean()
 
-		const separator = opts.semicolon ? ";" : ","
+		const separator = opts.semicolon ? ';' : ','
 		const rows = Array.from(table.rows)
 		const csvRows = []
 
 		for (const row of rows) {
 			const cells = Array.from(row.cells)
-			const csvCells = cells.map(cell => {
+			const csvCells = cells.map((cell) => {
 				let text = cell.textContent?.trim() || ''
 
 				// Escape double quotes and wrap in quotes if needed
-				if(text.includes('"')) {
+				if (text.includes('"')) {
 					text = text.replace(/"/g, '""')
 				}
-				if(text.includes(separator) || text.includes('"') || text.includes('\n')) {
+				if (text.includes(separator) || text.includes('"') || text.includes('\n')) {
 					text = `"${text}"`
 				}
-				
+
 				return text
 			})
 			csvRows.push(csvCells.join(separator))
 		}
 
 		csv = false
-		return csvRows.join("\n")
+		return csvRows.join('\n')
 	}
 	// * --- CSV --- *
-
 
 	let expandedRow = $state([]) as T[]
 	let expandTick = false
 	function toggleExpand(item: T, value?: boolean) {
-		if(expandTick) return
+		if (expandTick) return
 		expandTick = true
-		requestAnimationFrame(() => expandTick = false)
+		requestAnimationFrame(() => (expandTick = false))
 
 		let indexOf = expandedRow.indexOf(item)
-		if(value === undefined) {
+		if (value === undefined) {
 			value = indexOf === -1
 		}
-		if(!value) {
+		if (!value) {
 			expandedRow.splice(indexOf, 1)
 			return
 		}
-		if(table.expandable?.options.multiple === true) {
+		if (table.expandable?.options.multiple === true) {
 			expandedRow.push(item)
-		}
-		else {
+		} else {
 			expandedRow[0] = item
 		}
 	}
 
 	function addRowColumnEvents(
-		node: HTMLTableColElement, 
+		node: HTMLTableColElement,
 		opts: ['header' | 'row' | 'statusbar', ColumnState, () => RowColumnCtx<T, any>]
 	) {
 		const [where, column, value] = opts
-		if(where !== 'row') return
-		if(column.options.onclick) {
-			$effect(() => on(node, 'click', e => column.options.onclick!(e, value())))
+		if (where !== 'row') return
+		if (column.options.onclick) {
+			$effect(() => on(node, 'click', (e) => column.options.onclick!(e, value())))
 		}
 	}
 
-	function addRowEvents(
-		node: HTMLTableRowElement,
-		ctx: RowCtx<T>
-	) {
-		if(table.row?.events.onclick) {
-			$effect(() => on(node, 'click', e => table.row?.events.onclick!(e, ctx)))
+	function addRowEvents(node: HTMLTableRowElement, ctx: RowCtx<T>) {
+		if (table.row?.events.onclick) {
+			$effect(() => on(node, 'click', (e) => table.row?.events.onclick!(e, ctx)))
 		}
-		if(table.row?.events.oncontextmenu) {
-			$effect(() => on(node, 'contextmenu', e => table.row?.events.oncontextmenu!(e, ctx)))
+		if (table.row?.events.oncontextmenu) {
+			$effect(() => on(node, 'contextmenu', (e) => table.row?.events.oncontextmenu!(e, ctx)))
 		}
 	}
-
 </script>
 
 <!---------------------------------------------------->
 
 {#if csv !== false}
-	{@const renderedColumns = columns.filter(v => v.id !== '__fixed')}
+	{@const renderedColumns = columns.filter((v) => v.id !== '__fixed')}
 	<table bind:this={csvElement} hidden>
 		<thead>
 			<tr>
@@ -311,10 +322,15 @@
 									{@render column.snippets.row(row, {
 										index: i,
 										value: column.options.value?.(row),
-										isHovered: false,
-										itemState: { index: i, dragging: false, positioning: false } as ItemState<any>,
+										columnHovered: false,
+										rowHovered: false,
+										itemState: {
+											index: i,
+											dragging: false,
+											positioning: false
+										} as ItemState<any>,
 										selected: false,
-										expanded: false
+										expanded: false,
 									})}
 								{:else}
 									{column.options.value?.(row)}
@@ -348,7 +364,7 @@
 {/snippet}
 
 {#snippet dragSnippet()}
-	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style='opacity: .3'>
+	<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="opacity: .3">
 		<path
 			fill="currentColor"
 			d="M5.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m0 4.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3m1.5 3a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0M10.5 5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3M12 8a1.5 1.5 0 1 1-3 0a1.5 1.5 0 0 1 3 0m-1.5 6a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3"
@@ -374,9 +390,12 @@
 				class:fixed={true}
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				data-column={column.id}
+				class:pad={(isHeader && column.options.padHeader) || (!isHeader && column.options.padRow)}
 				class:header={isHeader}
 				class:sortable
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
+				onpointerenter={() => (hoveredColumn = column)}
+				onpointerleave={() => (hoveredColumn = null)}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
@@ -399,11 +418,14 @@
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
 				data-column={column.id}
+				class:pad={(isHeader && column.options.padHeader) || (!isHeader && column.options.padRow)}
 				class:header={isHeader}
 				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
 				class:border={i == sticky.length - 1}
 				class:sortable
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
+				onpointerenter={() => (hoveredColumn = column)}
+				onpointerleave={() => (hoveredColumn = null)}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
@@ -423,11 +445,14 @@
 				class={column.options.class ?? ''}
 				class:column={true}
 				data-column={column.id}
+				class:pad={(isHeader && column.options.padHeader) || (!isHeader && column.options.padRow)}
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
 				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
 				class:sortable
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
+				onpointerenter={() => (hoveredColumn = column)}
+				onpointerleave={() => (hoveredColumn = null)}
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
@@ -451,7 +476,7 @@
 		get index() {
 			return index
 		},
-		get isHovered() {
+		get rowHovered() {
 			return hoveredRow === item
 		},
 		get selected() {
@@ -476,20 +501,19 @@
 	<tr
 		aria-rowindex={index + 1}
 		style:opacity={itemState?.positioning ? 0 : 1}
-		class='row'
+		class="row"
 		class:dragging={itemState?.dragging}
 		class:selected={table.selected?.includes(item)}
 		class:first={index === 0}
 		class:last={index === virtualization.area.length - 1}
-		{...(table.options.href ? { href: table.options.href(item) } : {})}
-		{...(itemState?.dragging ? { 'data-svelte-tably': table.id } : {})}
+		{...itemState?.dragging ? { 'data-svelte-tably': table.id } : {}}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
 		use:addRowEvents={ctx}
 		onclick={(e) => {
 			if (table.expandable?.options.click === true) {
 				let target = e.target as HTMLElement
-				if(['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
+				if (['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
 					return
 				}
 				ctx.expanded = !ctx.expanded
@@ -501,11 +525,17 @@
 			(column) => {
 				return [
 					item,
-					assignDescriptors({
-						get value() {
-							return column.options.value ? column.options.value(item) : undefined
-						}
-					}, ctx)
+					assignDescriptors(
+						{
+							get value() {
+								return column.options.value ? column.options.value(item) : undefined
+							},
+							get columnHovered() {
+								return hoveredColumn === column
+							}
+						},
+						ctx
+					)
 				]
 			},
 			'row'
@@ -513,9 +543,11 @@
 		{#if table.row?.snippets.context}
 			{#if table.row?.snippets.contextHeader || !table.row?.options.context.hover || hoveredRow === item}
 				<td
-					class='context-col'
+					class="context-col"
 					class:hover={!table.row?.snippets.contextHeader && table.row?.options.context.hover}
-					class:hidden={table.row?.options.context.hover && table.row?.snippets.contextHeader && hoveredRow !== item}
+					class:hidden={table.row?.options.context.hover &&
+						table.row?.snippets.contextHeader &&
+						hoveredRow !== item}
 				>
 					{@render table.row?.snippets.context?.(item, ctx)}
 				</td>
@@ -523,19 +555,15 @@
 		{/if}
 	</tr>
 
-	{@const expandableTween = new SizeTween(
-		() => table.expandable && expandedRow.includes(item), 
-		{ min: 1, duration: table.expandable?.options.slide.duration, easing: table.expandable?.options.slide.easing })}
+	{@const expandableTween = new SizeTween(() => table.expandable && expandedRow.includes(item), {
+		min: 1,
+		duration: table.expandable?.options.slide.duration,
+		easing: table.expandable?.options.slide.easing
+	})}
 	{#if expandableTween.current > 0}
-		<tr class='expandable' style='height: {expandableTween.current}px'>
-			<td
-				colspan={columns.length}
-				style='height: {expandableTween.current}px'
-			>
-				<div
-					bind:offsetHeight={expandableTween.size}
-					style='width: {tbody.width - 3}px'
-				>
+		<tr class="expandable" style="height: {expandableTween.current}px">
+			<td colspan={columns.length} style="height: {expandableTween.current}px">
+				<div bind:offsetHeight={expandableTween.size} style="width: {tbody.width - 3}px">
 					{@render table.expandable!.snippets.content?.(item, ctx)}
 				</div>
 			</td>
@@ -545,35 +573,39 @@
 
 <table
 	id={table.id}
-	class='table svelte-tably'
-	style='--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;'
+	class="table svelte-tably"
+	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;"
 	aria-rowcount={table.data.length}
 >
-	{#if columns.some(v => v.snippets.header)}
-		<thead class='headers' bind:this={elements.headers}>
-			<tr style='min-width: {tbody.width}px'>
+	{#if columns.some((v) => v.snippets.header)}
+		<thead class="headers" bind:this={elements.headers}>
+			<tr style="min-width: {tbody.width}px">
 				{@render columnsSnippet(
 					(column) => column.snippets.header,
-					() => [{ 
-						get header() { return true },
-						get data() { return table.data }
-					}],
+					() => [
+						{
+							get header() {
+								return true
+							},
+							get data() {
+								return table.data
+							}
+						}
+					],
 					'header'
 				)}
 				{#if table.row?.snippets.contextHeader}
-					<th
-						class='context-col'
-					>
+					<th class="context-col">
 						{@render table.row?.snippets.contextHeader()}
 					</th>
 				{/if}
 			</tr>
-			<tr style='width:400px;background:none;pointer-events:none;'></tr>
+			<tr style="width:400px;background:none;pointer-events:none;"></tr>
 		</thead>
 	{/if}
 
 	<tbody
-		class='content'
+		class="content"
 		use:reorderArea={{ axis: 'y', class: table.id }}
 		bind:this={virtualization.viewport.element}
 		onscrollcapture={onscroll}
@@ -599,28 +631,29 @@
 		{/if}
 	</tbody>
 
-	{#if columns.some(v => v.snippets.statusbar)}
-		<tfoot class='statusbar' bind:this={elements.statusbar}>
+	{#if columns.some((v) => v.snippets.statusbar)}
+		<tfoot class="statusbar" bind:this={elements.statusbar}>
 			<tr>
 				{@render columnsSnippet(
 					(column) => column.snippets.statusbar,
-					() => [{
-						get data() { return table.data }
-					}],
+					() => [
+						{
+							get data() {
+								return table.data
+							}
+						}
+					],
 					'statusbar'
 				)}
 			</tr>
-			<tr style='width:400px;background:none;pointer-events:none;'></tr>
+			<tr style="width:400px;background:none;pointer-events:none;"></tr>
 		</tfoot>
 	{/if}
 
-	<caption
-		class='panel'
-		style='width: {panelTween.current}px;'
-	>
+	<caption class="panel" style="width: {panelTween.current}px;">
 		{#if properties.panel && properties.panel in table.panels}
 			<div
-				class='panel-content'
+				class="panel-content"
 				bind:offsetWidth={panelTween.size}
 				in:fly={{ x: 100, easing: sineInOut, duration: 300 }}
 				out:fly={{ x: 100, duration: 200, easing: sineInOut }}
@@ -636,18 +669,25 @@
 			</div>
 		{/if}
 	</caption>
-	<caption class='backdrop' aria-hidden={properties.panel && table.panels[properties.panel]?.backdrop ? false : true}>
-		<button aria-label='Panel backdrop' class='btn-backdrop' tabindex='-1' onclick={() => (properties.panel = undefined)}
+	<caption
+		class="backdrop"
+		aria-hidden={properties.panel && table.panels[properties.panel]?.backdrop ? false : true}
+	>
+		<button
+			aria-label="Panel backdrop"
+			class="btn-backdrop"
+			tabindex="-1"
+			onclick={() => (properties.panel = undefined)}
 		></button>
 	</caption>
 </table>
 
 {#snippet headerSelected(ctx: HeaderSelectCtx<T>)}
-	<input type='checkbox' indeterminate={ctx.indeterminate} bind:checked={ctx.isSelected} />
+	<input type="checkbox" indeterminate={ctx.indeterminate} bind:checked={ctx.isSelected} />
 {/snippet}
 
 {#snippet rowSelected(ctx: RowSelectCtx<T>)}
-	<input type='checkbox' bind:checked={ctx.isSelected} tabindex='-1' />
+	<input type="checkbox" bind:checked={ctx.isSelected} tabindex="-1" />
 {/snippet}
 
 {#if table.options.select || table.options.reorderable || table.expandable}
@@ -661,20 +701,22 @@
 	} = typeof select === 'boolean' ? {} : select}
 	{#if show !== 'never' || reorderable || expandable?.options.chevron !== 'never'}
 		<Column
-			id='__fixed'
+			id="__fixed"
 			{table}
 			fixed
-			width={Math.max(48, 0
-				+ (select && show !== 'never' ? 34 : 0) 
-				+ (reorderable ? 34 : 0)
-				+ (expandable && expandable?.options.chevron !== 'never' ? 34 : 0)
+			width={Math.max(
+				48,
+				0 +
+					(select && show !== 'never' ? 34 : 0) +
+					(reorderable ? 34 : 0) +
+					(expandable && expandable?.options.chevron !== 'never' ? 34 : 0)
 			)}
 			resizeable={false}
 		>
 			{#snippet header()}
-				<div class='__fixed'>
+				<div class="__fixed">
 					{#if reorderable}
-						<span style='width: 16px; display: flex; align-items: center;'></span>
+						<span style="width: 16px; display: flex; align-items: center;"></span>
 					{/if}
 					{#if select}
 						{@render headerSnippet({
@@ -702,15 +744,15 @@
 				</div>
 			{/snippet}
 			{#snippet row(item, row)}
-				<div class='__fixed'>
+				<div class="__fixed">
 					{#if reorderable && row.itemState}
-						<span style='width: 16px; display: flex; align-items: center;' use:row.itemState.handle>
-							{#if (row.isHovered && !row.itemState.area.isTarget) || row.itemState.dragging}
+						<span style="width: 16px; display: flex; align-items: center;" use:row.itemState.handle>
+							{#if (row.rowHovered && !row.itemState.area.isTarget) || row.itemState.dragging}
 								{@render dragSnippet()}
 							{/if}
 						</span>
 					{/if}
-					{#if select && (row.selected || show === 'always' || (row.isHovered && show === 'hover') || row.expanded)}
+					{#if select && (row.selected || show === 'always' || (row.rowHovered && show === 'hover') || row.expanded)}
 						{@render rowSnippet({
 							get isSelected() {
 								return row.selected
@@ -730,8 +772,8 @@
 						})}
 					{/if}
 					{#if expandable && expandable?.options.chevron !== 'never'}
-						<button class='expand-row' tabindex='-1' onclick={() => row.expanded = !row.expanded}>
-							{#if row.expanded || expandable.options.chevron === 'always' || (row.isHovered && expandable.options.chevron === 'hover')}
+						<button class="expand-row" tabindex="-1" onclick={() => (row.expanded = !row.expanded)}>
+							{#if row.expanded || expandable.options.chevron === 'always' || (row.rowHovered && expandable.options.chevron === 'hover')}
 								{@render chevronSnippet(row.expanded ? 180 : 90)}
 							{/if}
 						</button>
@@ -746,13 +788,11 @@
 	{#each Object.keys(table.data[0] || {}) as key}
 		<Column
 			id={key}
-			value={r => r[key]}
+			value={(r) => r[key]}
 			header={capitalize(segmentize(key))}
-			sort={
-				typeof table.data[0]?.[key] === 'number'
-					? (a, b) => a - b
-					: (a, b) => String(a).localeCompare(String(b))
-			}
+			sort={typeof table.data[0]?.[key] === 'number' ?
+				(a, b) => a - b
+			:	(a, b) => String(a).localeCompare(String(b))}
 		/>
 	{/each}
 {/if}
@@ -817,10 +857,10 @@
 		position: relative;
 		overflow: visible;
 	}
-	
+
 	.expandable {
 		position: relative;
-		
+
 		& > td {
 			position: sticky;
 			left: 1px;
@@ -1011,7 +1051,8 @@
 		border-bottom: 1px solid var(--tably-border);
 	}
 	.headers > tr {
-		> .column, > .context-col {
+		> .column,
+		> .context-col {
 			border-bottom: 1px solid var(--tably-border);
 			border-left: 1px solid var(--tably-border-grid);
 		}
@@ -1048,19 +1089,28 @@
 
 		& > .column {
 			display: flex;
-			padding-left: var(--tably-padding-x);
 			overflow: hidden;
+
+			&:not(.pad), &.pad > :global(*:first-child) {
+				padding-left: var(--tably-padding-x);
+			}
 		}
 
 		& > *:last-child:not(.context-col) {
 			width: 100%;
-			padding-right: var(--tably-padding-x);
+
+			&:not(.pad), &.pad > :global(*:first-child) {
+				padding-right: var(--tably-padding-x);
+			}
 		}
 	}
 
 	.row > .column {
 		background-color: var(--tably-bg);
-		padding: var(--tably-padding-y) 0;
+		&:not(.pad), &.pad > :global(*:first-child)  {
+			padding-top: var(--tably-padding-y);
+			padding-bottom: var(--tably-padding-y);
+		}
 	}
 
 	:global(#runic-drag .row) {
@@ -1079,7 +1129,7 @@
 		height: 100%;
 		overflow: hidden;
 		border-left: 1px solid var(--tably-border);
-		
+
 		z-index: 4;
 
 		> .panel-content {

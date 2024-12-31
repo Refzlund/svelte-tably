@@ -1,7 +1,6 @@
 import { type Snippet } from 'svelte'
 import { TableState, type RowCtx } from '../table/table.svelte.js'
-import type { ItemState } from 'runic-reorder'
-import { assign, pick, type AnyRecord } from '../utility.svelte.js'
+import { type AnyRecord } from '../utility.svelte.js'
 import { getDefaultHeader } from './Column.svelte'
 
 export type ColumnProps<T extends AnyRecord, V> = (
@@ -29,6 +28,7 @@ export interface HeaderCtx<T> {
 
 export interface RowColumnCtx<T extends AnyRecord, V> extends RowCtx<T> {
 	readonly value: V
+	readonly columnHovered: boolean
 }
 
 export type StatusbarCtx<T extends AnyRecord> = {
@@ -106,6 +106,13 @@ type ColumnOptions<T extends AnyRecord, V> = {
 
 	/** Event when the row-column is clicked */
 	onclick?: (event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void
+
+	/**
+	 * Pad child element of `td`/`th` instead of the column element itself.  
+	 * This ensures the child element "fills" the whole column.  
+	 * Ex. good if you want to make the column an anchor link; `<a href='...'>`
+	*/
+	pad?: 'row' | 'header' | 'both'
 }
 
 
@@ -124,7 +131,7 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 		header: typeof this.#props.header === 'string' ? getDefaultHeader(this.#props.header) : this.#props.header,
 		/** Title is the header-snippet, with header-ctx: `{ header: false }` */
 		title: (...args: any[]) => {
-			const getData = () => this.table.data.current
+			const getData = () => this.table.dataState.current
 			return this.snippets.header?.(...[args[0], () => ({
 				get header() { return false },
 				get data() {
@@ -156,7 +163,9 @@ export class ColumnState<T extends AnyRecord = any, V = any> {
 		resizeable: this.#props.resizeable ?? true,
 		style: this.#props.style,
 		class: this.#props.class,
-		onclick: this.#props.onclick
+		onclick: this.#props.onclick,
+		padRow: this.#props.pad === 'row' || this.#props.pad === 'both',
+		padHeader: this.#props.pad === 'header' || this.#props.pad === 'both'
 	})
 
 	toggleVisiblity() {
