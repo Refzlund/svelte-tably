@@ -140,7 +140,7 @@ Where `table` is `TableState<T>` and the rest are typed; `Component<T>`.
 | Attribute | Description | Type |
 | - | - | - |
 | content? | The contents of the table | `Snippet<[ctx: ContentCtx<T>]>?` |
-|  |  |  |
+|   |  |  |
 | id? | The `#id` for the table | `string` |
 | data | An array of objects for the table | `T[]` |
 | bind:selected? | The currently selected items | `T[]` |
@@ -186,7 +186,7 @@ This component designates a column where options like sorting, filtering etc. is
 | header? |  | `string \| Snippet<[ctx: HeaderCtx<T>]>` |
 | row? | | `Snippet<[item: T, ctx: RowColumnCtx<T, V>]>` |
 | statusbar? | | `Snippet<[ctx: StatusbarCtx<T>]>` |
-|  |  |  |
+|   |  |  |
 | sticky? | Should be sticky by default | `boolean` |
 | show? | Should be visible by default | `boolean` |
 | sortby? | Should sort by this by default | `boolean` |
