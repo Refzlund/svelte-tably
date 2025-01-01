@@ -10,7 +10,7 @@
 
 <script lang="ts">
 
-	import { fromProps, type AnyRecord } from '$lib/utility.svelte.js'
+	import { fromProps, type AnyRecord } from '../utility.svelte.js'
 	import type { Snippet } from 'svelte'
 	import { ColumnState, type ColumnProps, type HeaderCtx, type ColumnSnippets } from './column.svelte.js'
 

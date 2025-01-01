@@ -313,9 +313,6 @@
 		border: 1px solid hsl(0, 0%, 80%);
 		background-color: hsl(0, 00%, 97%);
 		cursor: pointer;
-		&:hover {
-			background-color: hsl(0, 0%, 95%);
-		}
 
 		&[type='submit'] {
 			background-color: hsl(220, 50%, 55%);
@@ -324,6 +321,10 @@
 				background-color: hsl(220, 50%, 50%);
 			}
 		}
+	}
+
+	.controls button:hover, form button:hover {
+		background-color: hsl(0, 0%, 95%);
 	}
 	
 	form {
@@ -403,13 +404,13 @@
 		transition: 0.1s ease;
 		border-radius: 0.25rem;
 		color: hsl(0, 0%, 50%);
-		&:hover {
-			background-color: hsl(0, 0%, 97%);
-		}
 
 		&.add :global(svg) {
 			transform: scale(0.85);
 		}
+	}
+	.more:hover {
+		background-color: hsl(0, 0%, 90%);
 	}
 
 	button.visible {

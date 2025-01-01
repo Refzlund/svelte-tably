@@ -1,11 +1,11 @@
 import { getContext, setContext, type Snippet } from 'svelte'
 import { ColumnState, type RowColumnCtx } from '../column/column.svelte.js'
-import { PanelState } from '$lib/panel/panel.svelte.js'
+import { PanelState } from '../panel/panel.svelte.js'
 import { Data } from './data.svelte.js'
-import { assign, boundAssign, boundPick, pick, type AnyRecord, type Simplify } from '$lib/utility.svelte.js'
-import type { ExpandableState } from '$lib/expandable/expandable.svelte.js'
+import { type AnyRecord } from '../utility.svelte.js'
+import type { ExpandableState } from '../expandable/expandable.svelte.js'
 import type { ItemState } from 'runic-reorder'
-import type { RowState } from '$lib/row/row.svelte.js'
+import type { RowState } from '../row/row.svelte.js'
 
 export type HeaderSelectCtx<T extends AnyRecord = any> = {
 	isSelected: boolean

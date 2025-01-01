@@ -1,5 +1,5 @@
-import { TableState } from '$lib/table/table.svelte.js'
-import { type AnyRecord } from '$lib/utility.svelte.js'
+import { TableState } from '../table/table.svelte.js'
+import { type AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 
 export type PanelProps<T extends AnyRecord> = {

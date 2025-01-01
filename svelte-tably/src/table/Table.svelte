@@ -24,15 +24,15 @@
 		type RowSelectCtx,
 		type TableProps
 	} from './table.svelte.js'
-	import Panel from '$lib/panel/Panel.svelte'
-	import Column from '$lib/column/Column.svelte'
-	import { assignDescriptors, capitalize, fromProps, mounted, segmentize } from '$lib/utility.svelte.js'
-	import { conditional } from '$lib/conditional.svelte.js'
-	import { ColumnState, type RowColumnCtx } from '$lib/column/column.svelte.js'
-	import Expandable from '$lib/expandable/Expandable.svelte'
-	import { SizeTween } from '$lib/size-tween.svelte.js'
+	import Panel from '../panel/Panel.svelte'
+	import Column from '../column/Column.svelte'
+	import { assignDescriptors, capitalize, fromProps, mounted, segmentize } from '../utility.svelte.js'
+	import { conditional } from '../conditional.svelte.js'
+	import { ColumnState, type RowColumnCtx } from '../column/column.svelte.js'
+	import Expandable from '../expandable/Expandable.svelte'
+	import { SizeTween } from '../size-tween.svelte.js'
 	import { on } from 'svelte/events'
-	import Row from '$lib/row/Row.svelte'
+	import Row from '../row/Row.svelte'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -232,7 +232,7 @@
 
 		const separator = opts.semicolon ? ';' : ','
 		const rows = Array.from(table.rows)
-		const csvRows = []
+		const csvRows = [] as string[]
 
 		for (const row of rows) {
 			const cells = Array.from(row.cells)
@@ -1001,10 +1001,6 @@
 		cursor: default;
 		user-select: none;
 
-		&.sticky.border {
-			border-right-color: var(--tably-border);
-		}
-
 		&:last-child {
 			border-right: none;
 		}
@@ -1050,12 +1046,9 @@
 		width: auto !important;
 		border-bottom: 1px solid var(--tably-border);
 	}
-	.headers > tr {
-		> .column,
-		> .context-col {
-			border-bottom: 1px solid var(--tably-border);
-			border-left: 1px solid var(--tably-border-grid);
-		}
+	.headers > tr > .column, .headers > tr > .context-col {
+		border-bottom: 1px solid var(--tably-border);
+		border-left: 1px solid var(--tably-border-grid);
 	}
 
 	.content {

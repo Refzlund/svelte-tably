@@ -1,5 +1,5 @@
-import { TableState, type RowCtx } from '$lib/table/table.svelte.js'
-import type { AnyRecord } from '$lib/utility.svelte.js'
+import { TableState, type RowCtx } from '../table/table.svelte.js'
+import type { AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 
 type ContextOptions<T extends AnyRecord> = {
