@@ -60,24 +60,24 @@ On top of that, the library API is extensive, so the table can meet your needs.
                 {table.data.length}
             {/snippet}
         </Column>
-		
-		<!-- Simplified -->
+        
+        <!-- Simplified -->
         <Column id='age' header='Age' value={r => r.age} sort={(a,b) => a - b} />
 
-		<Expandable click={false}>
-			{#snippet content(item, ctx)}
-				...
-			{/snippet}
-		</Expandable>
+        <Expandable click={false}>
+            {#snippet content(item, ctx)}
+                ...
+            {/snippet}
+        </Expandable>
 
-		<Row onclick={...} oncontextmenu={...}>
-			{#snippet contextHeader()}
-				<button ...> <Icon icon='add' /> </button>
-			{/snippet}
-			{#snippet context(item, ctx)}
-				<button ...> <Icon icon='menu' /> </button>
-			{/snippet}
-		</Row>
+        <Row onclick={...} oncontextmenu={...}>
+            {#snippet contextHeader()}
+                <button ...> <Icon icon='add' /> </button>
+            {/snippet}
+            {#snippet context(item, ctx)}
+                <button ...> <Icon icon='menu' /> </button>
+            {/snippet}
+        </Row>
 
         <Panel id='columns'>
             <!-- Anything you might like -->
