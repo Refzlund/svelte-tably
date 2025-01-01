@@ -18,7 +18,7 @@ export interface ExpandableProps<T extends AnyRecord> {
 	}
 
 	/**
-	 * Whether to open/close by clicking on the row
+	 * Whether you can click on a row to expand/collapse it
 	 * @default true
 	*/
 	click?: boolean

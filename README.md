@@ -154,7 +154,7 @@ Where `table` is `TableState<T>` and the rest are typed; `Component<T>`.
 #### SelectOptions
 
 | Properties | Description | Type |
-| - | - | - | - |
+| - | - | - |
 | show? | When to show the row-select when not selected | `'hover' \| 'always' \| 'never'` |
 | headerSnippet? | Custom snippet for the header select-input | `Snippet<[context: HeaderSelectCtx]>` |
 | rowSnippet? | Custom snippet for the row select-input | `Snippet<[context: RowSelectCtx<T>]>` |
@@ -183,9 +183,9 @@ This component designates a column where options like sorting, filtering etc. is
 
 | Attribute | Description | Type |
 | - | - | - |
-| header? |  | `string \| Snippet<[ctx: HeaderCtx<T>]>` |
-| row? | | `Snippet<[item: T, ctx: RowColumnCtx<T, V>]>` |
-| statusbar? | | `Snippet<[ctx: StatusbarCtx<T>]>` |
+| header? | The header element/contents | `string \| Snippet<[ctx: HeaderCtx<T>]>` |
+| row? | The row element. If not provided, `value: V` will be used. | `Snippet<[item: T, ctx: RowColumnCtx<T, V>]>` |
+| statusbar? | The statusbar element | `Snippet<[ctx: StatusbarCtx<T>]>` |
 |   |  |  |
 | sticky? | Should be sticky by default | `boolean` |
 | show? | Should be visible by default | `boolean` |
@@ -196,7 +196,8 @@ This component designates a column where options like sorting, filtering etc. is
 | resizeable? | Whether this column is resizeable | `boolean` |
 | filter? | A filter for this columns value | `(item: V) => boolean` |
 | style? | Styling the `td` (row-column) element | `string` |
-| pad? | Apply padding to the child-element of `td`/`th` instead of the column element itself | `'row' | 'header' | 'both` |
+| pad? | Apply padding to the child-element of `td`/`th` instead of the column element itself | `'row' \| 'header' \| 'both'` |
+| onclick? | When the column is clicked | `(event: MouseEvent, ctx: RowColumnCtx<T, V>) => void` |
 
 <br>
 
@@ -217,11 +218,27 @@ This component can add a context-menu on the side of each row, as well as provid
 </Row>
 ```
 
+| Attribute | Description | Type |
+| - | - | - |
+| context? | A sticky column on the right for each row | `Snippet<[item: T, ctx: RowCtx<T>]>` |
+| contextHeader? | A sticky column on the right for the header | `Snippet<[item: T, ctx: RowCtx<T>]>` |
+|   |  |  |
+| contextOptions? | Options for the Context-column | `ContextOptions<T>` |
+| onclick? | When row is clicked | `(event: MouseEvent, ctx: RowCtx<T>) => void` |
+| oncontextmenu? | When row is right-clicked | `(event: MouseEvent, ctx: RowCtx<T>) => void` |
+
+¤¤¤¤ ContextOptions
+
+| Properties | Description | Type |
+| - | - | - |
+| hover? | Only show when hovering? | `boolean` |
+| width? | The width for the context-column | `string` |
+
 <br>
 
 ### Expandable
 
-This component gives your rows the ability to expand.
+This component gives your rows the ability to be expanded.
 
 ```html
 <Expandable ...>
@@ -230,6 +247,15 @@ This component gives your rows the ability to expand.
     {/snippet}
 </Expandable>
 ```
+
+| Attribute | Description | Type |
+| - | - | - |
+| content | The contents of the expanded row. | `Snippet<[item: T, ctx: RowCtx<T>]>` |
+|   |  |  |
+| slide? | Options for sliding the expanding part | `{ duration?: number, easing?: EasingFunction }` |
+| click? | Whether you can click on a row to expand/collapse it | `boolean` |
+| chevron? | Whether to show the chevron on the left fixed column | `'always' \| 'hover' \| 'never'` |
+| multiple? | Can multiple rows be open at the same time? | `boolean` |
 
 <br>
 
@@ -244,3 +270,10 @@ This component creates a panel that can be opened on the side of the table.
     {/snippet}
 </Panel>
 ```
+
+| Attribute | Description | Type |
+| - | - | - |
+| children | The contents of the panel | `Snippet<[ctx: PanelCtx<T>]>` |
+|   |  |  |
+| id | The id for the panel that determines whether it's open or closed, from the Table attribute | `string` |
+| backdrop? | Whether there should be a backdrop or not | `boolean` |

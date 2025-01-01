@@ -5,7 +5,7 @@ import type { Snippet } from 'svelte'
 type ContextOptions<T extends AnyRecord> = {
 	/**
 	 * Only show when hovering the row?
-	 * @default false
+	 * @default true
 	*/
 	hover?: boolean
 	/**
