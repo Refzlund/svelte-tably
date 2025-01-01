@@ -45,7 +45,7 @@ On top of that, the library API is extensive, so the table can meet your needs.
 </script>
 
 <!-- Auto: Generate Columns based on data properties -->
-<Table auto {data} resizeable={false} filters=[...] />
+<Table auto {data} resizeable={false} filters={[...]} />
 
 <Table {data} panel={activePanel} select bind:selected>
     {#snippet content({ Column, Panel, Expandable, Row, state, table })}
@@ -171,7 +171,7 @@ Where `table` is `TableState<T>` and the rest are typed; `Component<T>`.
 import { Column } from 'svelte-tably'
 ```
 
-This component designates a column where options like sorting, filtering etc. is provided.
+This component designates a column where options like sorting, filtering etc. are provided.
 
 ```html
 <Column id='...' header='...' value={row => row.value} />
