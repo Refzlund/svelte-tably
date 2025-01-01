@@ -32,6 +32,28 @@ export interface RowCtx<T extends AnyRecord> {
 	expanded: boolean
 }
 
+type SelectOptions<T extends AnyRecord> = {
+	/**
+	 * The style, in which the selection is shown
+	 *
+	 * NOTE: If using `edge` | 'side', "show" will always be `hover`. This is due to
+	 * an inconsistency/limitation of matching the scroll between the selection div and the rows.
+	 *
+	 * @default 'column'
+	 */
+	style?: 'column'
+	/**
+	 * When to show the row-select, when not selected?
+	 * @default 'hover'
+	 */
+	show?: 'hover' | 'always' | 'never'
+	/**
+	 * Custom snippet
+	 */
+	headerSnippet?: Snippet<[context: HeaderSelectCtx]>
+	rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
+}
+
 export type TableProps<T extends AnyRecord> = {
 	id?: string
 	data: T[]
@@ -51,27 +73,7 @@ export type TableProps<T extends AnyRecord> = {
 	/** Whether columns in this table can be resized */
 	resizeable?: boolean
 	/** Whether to enable selection */
-	select?: boolean | {
-		/**
-		 * The style, in which the selection is shown
-		 *
-		 * NOTE: If using `edge` | 'side', "show" will always be `hover`. This is due to
-		 * an inconsistency/limitation of matching the scroll between the selection div and the rows.
-		 *
-		 * @default 'column'
-		 */
-		style?: 'column'
-		/**
-		 * When to show the row-select, when not selected?
-		 * @default 'hover'
-		 */
-		show?: 'hover' | 'always' | 'never'
-		/**
-		 * Custom snippet
-		 */
-		headerSnippet?: Snippet<[context: HeaderSelectCtx]>
-		rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
-	}
+	select?: boolean | SelectOptions<T>
 	/** Create missing columns automatically. */
 	auto?: boolean
 }

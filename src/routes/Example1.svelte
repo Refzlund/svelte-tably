@@ -17,6 +17,20 @@
 		}
 	}
 
+	function download(filename: string, text: string) {
+		console.log(text)
+		var element = document.createElement('a')
+		element.setAttribute('href', 'data:text/plaincharset=utf-8,' + encodeURIComponent(text))
+		element.setAttribute('download', filename)
+
+		element.style.display = 'none'
+		document.body.appendChild(element)
+
+		element.click()
+
+		document.body.removeChild(element)
+	}
+
 	let data = $state(createData(500))
 
 	let panel = $state() as undefined | string
@@ -28,11 +42,14 @@
 	let filters = $state([]) as ((item: (typeof data)[number]) => boolean)[]
 
 	let table: Table<ReturnType<typeof createData>[number]>
+
+	let edit = $state({}) as ReturnType<typeof person>
 </script>
 
 <!---------------------------------------------------->
 
-<div style="margin: 1rem;">
+<div class='controls' style="margin: 1rem;">
+	<button onclick={() => table?.toCSV({ semicolon: true }).then((v) => download('table.csv',v))}> Get CSV </button>
 	<button onclick={() => (panel = panel ? undefined : 'columns')}>Toggle panel</button>
 	<button onclick={() => (selectable = !selectable)}>Toggle selectability</button>
 
@@ -43,9 +60,6 @@
 	<button onclick={() => (data = createData(5000))}>5000</button>
 	<button onclick={() => (data = createData(50000))}>50000</button>
 
-	<div>
-		<button onclick={() => table?.toCSV({ semicolon: true }).then((v) => console.log(v))}> Get CSV </button>
-	</div>
 
 	<div>
 		<input bind:value={search} placeholder="Search name" />
@@ -150,12 +164,12 @@
 				}}
 			>
 				{#snippet contextHeader()}
-					<button class="more add" tabindex="-1" onclick={() => data.push(person())}>
+					<button class="more add" tabindex="-1" onclick={() => { panel = 'modify'; edit = {} as any }}>
 						<Icon icon="add" />
 					</button>
 				{/snippet}
 				{#snippet context(item, ctx)}
-					<button class="more" tabindex="-1">
+					<button class="more" tabindex="-1" onclick={() => { panel = 'modify'; edit = item }}>
 						<Icon icon="more" />
 					</button>
 				{/snippet}
@@ -174,7 +188,7 @@
 			</Expandable>
 
 			<Panel id="columns">
-				{#snippet children({ table })}
+				{#snippet children()}
 					{#snippet item(column: ColumnState, itemState: ItemState)}
 						<div
 							class="order"
@@ -194,7 +208,6 @@
 							</button>
 						</div>
 					{/snippet}
-
 					{#if item}
 						{@const area = reorder(item)}
 
@@ -217,12 +230,121 @@
 					{/if}
 				{/snippet}
 			</Panel>
+			<Panel id='modify' backdrop={false}>
+				{@const adding = !table.dataState.origin.includes(edit)}
+				<form onsubmit={e => {
+					e.preventDefault()
+					data.push(edit)
+				}}>
+					<h3>{adding ? 'Add Person' : edit.name}</h3>
+					<label>Name <input bind:value={edit.name} /></label>
+					<label>Age <input type="number" bind:value={edit.age} /></label>
+					<label>E-mail <input bind:value={edit.email} /></label>
+					{#if adding}
+						<button type='submit' style='margin: .5rem 0'>Add Person</button>
+					{/if}
+					<button type='button' style='margin: .5rem 0' onclick={() => panel = undefined}>Close</button>
+				</form>
+			</Panel>
 		{/snippet}
 	</Table>
 </div>
 
 <!---------------------------------------------------->
 <style>
+
+	:global(body.dark) {
+		--tably-bg: hsla(0, 0%, 15%);
+		--tably-color: white;
+		--tably-border: hsla(0, 0%, 50%, 0.2);
+		--tably-border-grid: hsla(0, 0%, 50%, 0.1);
+		--tably-statusbar: hsla(0, 0%, 13%);
+
+		/* Note: Lots of styling stuff. Anything below is kind of irrelevant. */
+
+		.details {
+			background-color: hsl(0, 0%, 12%);
+		}
+
+		.more:hover {
+			background-color: hsl(0, 0%, 20%);
+		}
+
+		.controls button, form button {
+			background-color: hsl(0, 0%, 20%);
+			border: 1px solid hsl(0, 0%, 40%);
+			&:hover {
+				background-color: hsl(0, 0%, 25%);
+			}
+			&[type='submit'] {
+				background-color: hsl(220, 50%, 47%);
+				&:hover {
+					background-color: hsl(220, 50%, 52%);
+				}
+			}
+		}
+		input {
+			border: 1px solid hsl(0, 0%, 40%);
+			&:focus {
+				border: 1px solid hsl(220, 50%, 60%);
+			}
+		}
+	}
+
+	.container :global(table) {
+		height: 100%;
+	}
+
+	input {
+		padding: .5rem;
+		font-size: 1rem;
+		border-radius: var(--tably-radius);
+		border: 1px solid hsl(0, 0%, 80%);
+		&:focus {
+			border: 1px solid hsl(220, 50%, 60%);
+			outline: none;
+		}
+	}
+
+	.controls button, form button {
+		padding: .5rem 1rem;
+		outline: none;
+		border-radius: var(--tably-radius);
+		border: 1px solid hsl(0, 0%, 80%);
+		background-color: hsl(0, 00%, 97%);
+		cursor: pointer;
+		&:hover {
+			background-color: hsl(0, 0%, 95%);
+		}
+
+		&[type='submit'] {
+			background-color: hsl(220, 50%, 55%);
+			color: white;
+			&:hover {
+				background-color: hsl(220, 50%, 50%);
+			}
+		}
+	}
+	
+	form {
+		padding: 1rem;
+		width: 240px;
+
+		h3 {
+			margin: .5rem 0;
+		}
+
+		label {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			margin-bottom: .5rem;
+		}
+
+		button {
+			width: 100%;
+		}
+	}
 
 	a {
 		text-decoration: none;
@@ -288,13 +410,6 @@
 		&.add :global(svg) {
 			transform: scale(0.85);
 		}
-	}
-
-	:global(body.dark .svelte-tably) {
-		--tably-bg: hsla(0, 0%, 15%);
-		--tably-color: white;
-		--tably-border: hsla(0, 0%, 50%, 0.2);
-		--tably-statusbar: hsla(0, 0%, 13%);
 	}
 
 	button.visible {
