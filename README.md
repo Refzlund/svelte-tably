@@ -227,7 +227,7 @@ This component can add a context-menu on the side of each row, as well as provid
 | onclick? | When row is clicked | `(event: MouseEvent, ctx: RowCtx<T>) => void` |
 | oncontextmenu? | When row is right-clicked | `(event: MouseEvent, ctx: RowCtx<T>) => void` |
 
-¤¤¤¤ ContextOptions
+#### ContextOptions
 
 | Properties | Description | Type |
 | - | - | - |
