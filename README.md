@@ -121,6 +121,10 @@ All components except Table are meant to be children of the `Table` component.
 However, you can safely create a `Component.svelte` and use these components,
 and then provide `<Component/>` as a child to `<Table>`. 
 
+```ts
+import Table from 'svelte-tably'
+```
+
 ### Table
 
 The table component.
@@ -163,6 +167,10 @@ Where `table` is `TableState<T>` and the rest are typed; `Component<T>`.
 
 ### Column
 
+```ts
+import { Column } from 'svelte-tably'
+```
+
 This component designates a column where options like sorting, filtering etc. is provided.
 
 ```html
@@ -203,6 +211,10 @@ This component designates a column where options like sorting, filtering etc. is
 
 ### Row
 
+```ts
+import { Row } from 'svelte-tably'
+```
+
 This component can add a context-menu on the side of each row, as well as provide event handlers to the row element.
 
 ```html
@@ -238,6 +250,10 @@ This component can add a context-menu on the side of each row, as well as provid
 
 ### Expandable
 
+```ts
+import { Expandable } from 'svelte-tably'
+```
+
 This component gives your rows the ability to be expanded.
 
 ```html
@@ -260,6 +276,10 @@ This component gives your rows the ability to be expanded.
 <br>
 
 ### Panel
+
+```ts
+import { Panel } from 'svelte-tably'
+```
 
 This component creates a panel that can be opened on the side of the table.
 
