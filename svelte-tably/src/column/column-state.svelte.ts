@@ -1,5 +1,5 @@
 import { type Snippet } from 'svelte'
-import { TableState, type RowCtx } from '../table/table.svelte.js'
+import { TableState, type RowCtx } from '../table/table-state.svelte.js'
 import { type AnyRecord } from '../utility.svelte.js'
 import { getDefaultHeader } from './Column.svelte'
 
@@ -12,8 +12,8 @@ export type ColumnProps<T extends AnyRecord, V> = (
 	& ColumnDefaults<T>
 	& ColumnOptions<T, V>
 ) extends infer K ? {
-		[P in keyof K]: K[P]
-	} : never
+	[P in keyof K]: K[P]
+} : never
 
 
 export interface HeaderCtx<T> {

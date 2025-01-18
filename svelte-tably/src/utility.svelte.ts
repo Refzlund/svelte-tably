@@ -1,4 +1,4 @@
-import { onMount } from 'svelte'
+import { onMount, Snippet } from 'svelte'
 
 export type Simplify<T> = T extends infer V ? {
 	[K in keyof V]: V[K]
@@ -122,4 +122,16 @@ export function segmentize(str: string) {
 		result += char
 	}
 	return result.trim()
+}
+
+
+
+type SnippetLiteralProperties<K extends unknown[], Result extends (() => unknown)[] = []> = 
+	K extends [infer First, ...infer Rest] 
+		? SnippetLiteralProperties<Rest, [...Result, () => First]> 
+		: Result
+
+
+export function snippetLiteral<K extends unknown[]>(snippet: Snippet<K>) {
+	return snippet as unknown as ((anchor: Comment, ...args: SnippetLiteralProperties<K>) => ReturnType<typeof snippet>)
 }

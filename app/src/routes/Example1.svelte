@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Table, { type ColumnState } from 'svelte-tably'
+	import Table, { type ColumnState } from 'svelte-tably-npm'
 	import reorder, { type ItemState } from 'runic-reorder'
 
 	import { faker } from '@faker-js/faker'
@@ -251,7 +251,7 @@
 </div>
 
 <!---------------------------------------------------->
-<style>
+<style lang='postcss'>
 
 	:global(body.dark) {
 		--tably-bg: hsla(0, 0%, 15%);

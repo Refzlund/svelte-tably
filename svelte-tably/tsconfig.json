@@ -9,7 +9,11 @@
 		"isolatedModules": true,
 		"target": "ESNext",
 		"module": "ESNext",
-		"moduleResolution": "bundler"
+		"moduleResolution": "bundler",
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true
 	},
 	"exclude": ["npm", "svelte.config.js"]
 }

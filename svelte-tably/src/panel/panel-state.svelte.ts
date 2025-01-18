@@ -1,4 +1,4 @@
-import { TableState } from '../table/table.svelte.js'
+import { TableState } from '../table/table-state.svelte.js'
 import { type AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 
@@ -23,7 +23,7 @@ export class PanelState<T extends AnyRecord> {
 	table: TableState<T>
 
 	id = $derived(this.#props.id)
-	
+
 	backdrop = $derived(this.#props.backdrop ?? true)
 	children = $derived(this.#props.children)
 
