@@ -19,7 +19,6 @@
 		"svelte": "^5",
 		"svelte-check": "^4",
 		"svelte-tably": "workspace:*",
-		"svelte-tably-npm": "file:../svelte-tably/npm",
 		"typescript": "latest",
 		"vite": "^6"
 	}
