@@ -31,6 +31,9 @@ On top of that, the library API is extensive, so the table can meet your needs.
 
 `bun add -D svelte-tably`
 
+> [!NOTE]  
+> If you do SSR, set Node version to [20 or higher](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSorted#browser_compatibility)
+
 ```html
 <script lang='ts'>
     import Table from 'svelte-tably'

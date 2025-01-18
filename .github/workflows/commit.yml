@@ -1,0 +1,29 @@
+name: Commit
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      
+      - name: Install Dependencies
+        run: bun install
+      
+    #   - name: Linting
+    #     run: bun run lint
+        
+    #   - name: Unit Testing
+    #     run: bun run test
+
+      - name: Build
+        run: bun run package

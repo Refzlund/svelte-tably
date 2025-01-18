@@ -4,15 +4,16 @@
 	"scripts": {
 		"app": "cd app && bun run dev",
 		"package": "cd svelte-tably && bun run package",
-		"publish": "cd svelte-tably/npm && bun publish"
+		"publish": "bun run package && changeset publish"
 	},
 	"workspaces": [
 		"./app",
 		"./svelte-tably"
 	],
 	"devDependencies": {
-		"@changesets/cli": "^2.27.11",
-		"@types/bun": "^1.1.14",
-		"@types/node": "^22.10.2"
+		"@changesets/cli": "^2",
+		"@svitejs/changesets-changelog-github-compact": "^1",
+		"@types/bun": "^1",
+		"@types/node": "^22"
 	}
 }
