@@ -3,7 +3,6 @@
 	"version": "1.0.1",
 	"description": "A high performant dynamic table for Svelte 5",
 	"license": "MIT",
-	"private": true,
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/Refzlund/svelte-tably.git"
