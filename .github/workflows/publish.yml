@@ -3,7 +3,7 @@ name: Publish
 on:
   workflow_run:
     branches:
-      - master
+      - main
     workflows: 
       - Commit
     types:
