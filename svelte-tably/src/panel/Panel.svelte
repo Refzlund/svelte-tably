@@ -10,7 +10,7 @@
 
 <script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
 
-	import { PanelState, type PanelProps } from './panel.svelte.js'
+	import { PanelState, type PanelProps } from './panel-state.svelte.js'
 	import { fromProps } from '../utility.svelte.js'
 
 	let {...props}: PanelProps<T> = $props()

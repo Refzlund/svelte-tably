@@ -10,7 +10,7 @@
 
 <script lang='ts'>
 
-	import { RowState, type RowProps } from './row.svelte.js'
+	import { RowState, type RowProps } from './row-state.svelte.js'
 	import type { AnyRecord } from '../utility.svelte.js'
 	import { fromProps } from '../utility.svelte.js'
 

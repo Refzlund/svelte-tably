@@ -1,5 +1,5 @@
 import { tick, untrack } from 'svelte'
-import type { TableState } from './table.svelte.js'
+import type { TableState } from './table-state.svelte.js'
 
 export class Virtualization<T extends Record<PropertyKey, unknown>> {
 	scrollTop = $state(0)
@@ -33,7 +33,7 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 		})
 
 		$effect(() => {
-			if(!ticked) return
+			if (!ticked) return
 			table.dataState.current
 			untrack(() => {
 				if (!this.viewport.element) {

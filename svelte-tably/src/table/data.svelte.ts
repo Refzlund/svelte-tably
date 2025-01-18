@@ -1,6 +1,6 @@
 import { on } from 'svelte/events'
 import { untrack } from 'svelte'
-import type { TableProps, TableState } from './table.svelte.js'
+import type { TableProps, TableState } from './table-state.svelte.js'
 
 export class Data<T extends Record<PropertyKey, unknown>> {
 
@@ -95,7 +95,7 @@ export class Data<T extends Record<PropertyKey, unknown>> {
 				}
 			}
 
-			
+
 			this.filtered = filters.length === 0 ? this.sorted : this.sorted.filter((value) => filters.every((filter) => filter(value)))
 		})
 	}

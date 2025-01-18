@@ -8,9 +8,6 @@
 
 -->
 
-<script module lang="ts">
-</script>
-
 <script lang="ts">
 	import { type Snippet } from 'svelte'
 	import { fly } from 'svelte/transition'
@@ -23,12 +20,12 @@
 		type RowCtx,
 		type RowSelectCtx,
 		type TableProps
-	} from './table.svelte.js'
+	} from './table-state.svelte.js'
 	import Panel from '../panel/Panel.svelte'
 	import Column from '../column/Column.svelte'
 	import { assignDescriptors, capitalize, fromProps, mounted, segmentize } from '../utility.svelte.js'
 	import { conditional } from '../conditional.svelte.js'
-	import { ColumnState, type RowColumnCtx } from '../column/column.svelte.js'
+	import { ColumnState, type RowColumnCtx } from '../column/column-state.svelte.js'
 	import Expandable from '../expandable/Expandable.svelte'
 	import { SizeTween } from '../size-tween.svelte.js'
 	import { on } from 'svelte/events'
@@ -330,7 +327,7 @@
 											positioning: false
 										} as ItemState<any>,
 										selected: false,
-										expanded: false,
+										expanded: false
 									})}
 								{:else}
 									{column.options.value?.(row)}
@@ -345,7 +342,7 @@
 {/if}
 
 <svelte:head>
-	{@html `<style>${style}</style>`}
+	{@html `<`+`style>${style}</style>`}
 </svelte:head>
 
 {#snippet chevronSnippet(rotation: number = 0)}
@@ -399,7 +396,7 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
-					<span class='sorting-icon'>
+					<span class="sorting-icon">
 						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
@@ -429,7 +426,7 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
-					<span class='sorting-icon'>
+					<span class="sorting-icon">
 						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
@@ -456,7 +453,7 @@
 			>
 				{@render renderable(column)?.(args[0], args[1])}
 				{#if isHeader && table.dataState.sortby === column.id && sortable}
-					<span class='sorting-icon'>
+					<span class="sorting-icon">
 						{@render chevronSnippet(table.dataState.sortReverse ? 0 : 180)}
 					</span>
 				{/if}
@@ -1046,7 +1043,8 @@
 		width: auto !important;
 		border-bottom: 1px solid var(--tably-border);
 	}
-	.headers > tr > .column, .headers > tr > .context-col {
+	.headers > tr > .column,
+	.headers > tr > .context-col {
 		border-bottom: 1px solid var(--tably-border);
 		border-left: 1px solid var(--tably-border-grid);
 	}
@@ -1084,7 +1082,8 @@
 			display: flex;
 			overflow: hidden;
 
-			&:not(.pad), &.pad > :global(*:first-child) {
+			&:not(.pad),
+			&.pad > :global(*:first-child) {
 				padding-left: var(--tably-padding-x);
 			}
 		}
@@ -1092,7 +1091,8 @@
 		& > *:last-child:not(.context-col) {
 			width: 100%;
 
-			&:not(.pad), &.pad > :global(*:first-child) {
+			&:not(.pad),
+			&.pad > :global(*:first-child) {
 				padding-right: var(--tably-padding-x);
 			}
 		}
@@ -1100,7 +1100,8 @@
 
 	.row > .column {
 		background-color: var(--tably-bg);
-		&:not(.pad), &.pad > :global(*:first-child)  {
+		&:not(.pad),
+		&.pad > :global(*:first-child) {
 			padding-top: var(--tably-padding-y);
 			padding-bottom: var(--tably-padding-y);
 		}

@@ -1,4 +1,4 @@
-import { TableState, type RowCtx } from '../table/table.svelte.js'
+import { TableState, type RowCtx } from '../table/table-state.svelte.js'
 import type { AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 import { sineInOut } from 'svelte/easing'
@@ -57,7 +57,7 @@ export class ExpandableState<T extends AnyRecord> {
 	constructor(props: ExpandableProps<T>) {
 		this.#props = props
 		this.#table = TableState.getContext<T>()!
-		if(!this.#table) {
+		if (!this.#table) {
 			throw new Error('svelte-tably: Expandable must be associated with a Table')
 		}
 

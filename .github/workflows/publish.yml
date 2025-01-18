@@ -1,0 +1,36 @@
+name: Publish
+
+on:
+  workflow_run:
+    branches:
+      - master
+    workflows: 
+      - Commit
+    types:
+      - completed
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      
+      - name: Install Dependencies
+        run: bun install
+      
+      # https://github.com/changesets/action#with-publishing
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          publish: bun run publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

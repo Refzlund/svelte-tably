@@ -10,7 +10,7 @@
 
 <script lang='ts'>
 
-	import { ExpandableState, type ExpandableProps } from './expandable.svelte.js'
+	import { ExpandableState, type ExpandableProps } from './expandable-state.svelte.js'
 	import type { AnyRecord } from '../utility.svelte.js'
 	import { fromProps } from '../utility.svelte.js'
 
