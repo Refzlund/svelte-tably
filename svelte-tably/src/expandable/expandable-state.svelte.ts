@@ -1,10 +1,9 @@
 import { TableState, type RowCtx } from '../table/table-state.svelte.js'
-import type { AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 import { sineInOut } from 'svelte/easing'
 import type { EasingFunction } from 'svelte/transition'
 
-export interface ExpandableProps<T extends AnyRecord> {
+export interface ExpandableProps<T> {
 	content: Snippet<[item: T, ctx: RowCtx<T>]>
 	/**
 	 * How many ms to slide open?
@@ -36,7 +35,7 @@ export interface ExpandableProps<T extends AnyRecord> {
 	multiple?: boolean
 }
 
-export class ExpandableState<T extends AnyRecord> {
+export class ExpandableState<T> {
 	#table: TableState<T>
 	#props = {} as ExpandableProps<T>
 

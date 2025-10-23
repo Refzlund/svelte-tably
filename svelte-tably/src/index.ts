@@ -1,4 +1,13 @@
-export { default as default } from './table/Table.svelte'
+import Table from './table/Table.svelte'
+import type { TableState, TableProps } from './table/table-state.svelte.js'
+
+namespace Table {
+	export type State<T = unknown> = TableState<T>
+	export type Props<T = unknown> = TableProps<T>
+}
+
+export default Table
+
 export { default as Panel } from './panel/Panel.svelte'
 export { default as Column } from './column/Column.svelte'
 export { default as Row } from './row/Row.svelte'

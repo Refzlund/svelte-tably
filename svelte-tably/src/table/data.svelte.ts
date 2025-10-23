@@ -2,7 +2,7 @@ import { on } from 'svelte/events'
 import { untrack } from 'svelte'
 import type { TableProps, TableState } from './table-state.svelte.js'
 
-export class Data<T extends Record<PropertyKey, unknown>> {
+export class Data<T> {
 
 	#table = $state() as TableState<T>
 

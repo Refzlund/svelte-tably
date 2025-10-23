@@ -1,8 +1,7 @@
 import { TableState } from '../table/table-state.svelte.js'
-import { type AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 
-export type PanelProps<T extends AnyRecord> = {
+export type PanelProps<T> = {
 	id: string
 	/**
 	 * A darkened backdrop?
@@ -13,12 +12,12 @@ export type PanelProps<T extends AnyRecord> = {
 	children: Snippet<[ctx: PanelCtx<T>]>
 }
 
-export type PanelCtx<T extends AnyRecord> = {
+export type PanelCtx<T> = {
 	readonly table: TableState<T>
 	readonly data: T[]
 }
 
-export class PanelState<T extends AnyRecord> {
+export class PanelState<T> {
 	#props = {} as PanelProps<T>
 	table: TableState<T>
 
