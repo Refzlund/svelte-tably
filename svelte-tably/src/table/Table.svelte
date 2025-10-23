@@ -91,15 +91,16 @@
 	const scrolled = $derived(table.positions.scroll.filter(notHidden))
 	const columns = $derived([...fixed, ...sticky, ...scrolled])
 
-	/** Width of each column */
-	const columnWidths = $state({}) as Record<string, number>
-
 	const getWidth = (key: string, def: number = 150) =>
-		columnWidths[key] || table.columns[key]?.defaults.width || def
+		table.columnWidths[key] ??= table.columns[key]?.defaults.width ?? def
 
 	/** grid-template-columns for widths */
-	const style = $derived.by(() => {
-		if (!mount.isMounted) return ''
+	let style = $state('')
+	$effect(() => {
+		if (!mount.isMounted) {
+			style = ''
+			return
+		}
 
 		const context = table.row?.snippets.context ? table.row?.options.context.width : ''
 
@@ -113,15 +114,15 @@
 				.join(' ') + context
 
 		const theadTempla3teColumns = `
-	#${table.id} > thead > tr,
-	#${table.id} > tfoot > tr {
+	[data-svelte-tably="${table.cssId}"] > thead > tr,
+	[data-svelte-tably="${table.cssId}"] > tfoot > tr {
 		grid-template-columns: ${templateColumns};
 	}
 		`
 
 		const tbodyTemplateColumns = `
-	[data-area-class='${table.id}'] tr.row,
-	#${table.id} > tbody::after {
+	[data-area-class='${table.cssId}'] tr.row,
+	[data-svelte-tably="${table.cssId}"] > tbody::after {
 		grid-template-columns: ${templateColumns};
 	}
 		`
@@ -131,8 +132,8 @@
 			.map((column, i, arr) => {
 				sum += getWidth(arr[i - 1]?.id, i === 0 ? 0 : undefined)
 				return `
-		#${table.id} .column.sticky[data-column='${column.id}'],
-		[data-svelte-tably='${table.id}'] .column.sticky[data-column='${column.id}'] {
+		[data-svelte-tably="${table.cssId}"] .column.sticky[data-column='${column.id}'],
+		[data-svelte-tably-row='${table.cssId}'] .column.sticky[data-column='${column.id}'] {
 			left: ${sum}px;
 		}
 		`
@@ -144,14 +145,14 @@
 				!column.options.style ?
 					''
 				:	`
-		[data-area-class='${table.id}'] .column[data-column='${column.id}'] {
+		[data-area-class='${table.cssId}'] .column[data-column='${column.id}'] {
 			${column.options.style}
 		}
 		`
 			)
 			.join('')
 
-		return theadTempla3teColumns + tbodyTemplateColumns + stickyLeft + columnStyling
+		style = theadTempla3teColumns + tbodyTemplateColumns + stickyLeft + columnStyling
 	})
 
 	function observeColumnWidth(node: HTMLDivElement, isHeader = false) {
@@ -164,8 +165,8 @@
 
 		const observer = new MutationObserver(() => {
 			const width = parseFloat(node.style.width)
-			if (width === columnWidths[key]) return
-			columnWidths[key] = width
+			if (width === table.columnWidths[key]) return
+			table.columnWidths[key] = width
 			if (!mouseup) {
 				mouseup = true
 				window.addEventListener(
@@ -503,7 +504,7 @@
 		class:selected={table.selected?.includes(item)}
 		class:first={index === 0}
 		class:last={index === virtualization.area.length - 1}
-		{...itemState?.dragging ? { 'data-svelte-tably': table.id } : {}}
+		{...itemState?.dragging ? { 'data-svelte-tably-row': table.cssId } : {}}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
 		use:addRowEvents={ctx}
@@ -570,6 +571,7 @@
 
 <table
 	id={table.id}
+	data-svelte-tably={table.cssId}
 	class="table svelte-tably"
 	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px;"
 	aria-rowcount={table.data.length}
@@ -603,7 +605,7 @@
 
 	<tbody
 		class="content"
-		use:reorderArea={{ axis: 'y', class: table.id }}
+		use:reorderArea={{ axis: 'y', class: table.cssId }}
 		bind:this={virtualization.viewport.element}
 		onscrollcapture={onscroll}
 		bind:clientHeight={virtualization.viewport.height}

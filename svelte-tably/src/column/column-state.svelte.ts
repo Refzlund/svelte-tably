@@ -1,9 +1,8 @@
 import { type Snippet } from 'svelte'
 import { TableState, type RowCtx } from '../table/table-state.svelte.js'
-import { type AnyRecord } from '../utility.svelte.js'
 import { getDefaultHeader } from './Column.svelte'
 
-export type ColumnProps<T extends AnyRecord, V> = (
+export type ColumnProps<T, V> = (
 	& {
 		id: string
 		table?: TableState<T>
@@ -26,17 +25,17 @@ export interface HeaderCtx<T> {
 	readonly header?: boolean
 }
 
-export interface RowColumnCtx<T extends AnyRecord, V> extends RowCtx<T> {
+export interface RowColumnCtx<T, V> extends RowCtx<T> {
 	readonly value: V
 	readonly columnHovered: boolean
 }
 
-export type StatusbarCtx<T extends AnyRecord> = {
+export type StatusbarCtx<T> = {
 	readonly data: T[]
 }
 
 
-export type ColumnSnippets<T extends AnyRecord, V> = {
+export type ColumnSnippets<T, V> = {
 	header?: Snippet<[ctx: HeaderCtx<T>]> | string
 	row?: Snippet<[item: T, ctx: RowColumnCtx<T, V>]>
 	statusbar?: Snippet<[ctx: StatusbarCtx<T>]>
@@ -65,7 +64,7 @@ type ColumnDefaults<T> = {
 	width?: number
 }
 
-type ColumnOptions<T extends AnyRecord, V> = {
+type ColumnOptions<T, V> = {
 	/**
 	 * Fixed is like sticky, but in its own category — meant to not be moved/hidden ex. select-boxes
 	 * @default false
@@ -117,7 +116,7 @@ type ColumnOptions<T extends AnyRecord, V> = {
 
 
 
-export class ColumnState<T extends AnyRecord = any, V = any> {
+export class ColumnState<T = any, V = any> {
 	#props = {} as ColumnProps<T, V>
 
 	id = $derived(this.#props.id) as string
