@@ -601,7 +601,7 @@
 >
 	{#if columns.some((v) => v.snippets.header)}
 		<thead class="headers" bind:this={elements.headers}>
-			<tr style="min-width: {tbody.width}px">
+			<tr>
 				{@render columnsSnippet(
 					(column) => column.snippets.header,
 					() => [
@@ -956,6 +956,10 @@
 		width: 100%;
 	}
 
+	thead {
+		position: relative;
+	}
+
 	tbody::before,
 	tbody::after,
 	selects::before,
@@ -1098,10 +1102,10 @@
 	.headers > tr,
 	.row,
 	.statusbar > tr {
-		position: relative;
 		display: grid;
 		width: 100%;
 		height: 100%;
+		min-width: max-content;
 
 		& > .column {
 			display: flex;
