@@ -1,5 +1,22 @@
 # svelte-tably
 
+## 1.1.0
+
+### Minor Changes
+
+- feat: export csv via table-state; `table.toCSV` ([#13](https://github.com/Refzlund/svelte-tably/pull/13))
+  feat: `toCSV` can now accept `columns` and `filters`
+  feat: allowwed bind:table to bind table-state
+  feat: added `Table.State` type
+
+- feat: save table settings to localstorage ([#10](https://github.com/Refzlund/svelte-tably/pull/10))
+
+### Patch Changes
+
+- fix: assigning to undefined when scrolling ([#12](https://github.com/Refzlund/svelte-tably/pull/12))
+
+- fix: sticky headers unstick on long columns ([#14](https://github.com/Refzlund/svelte-tably/pull/14))
+
 ## 1.0.1
 
 ### Patch Changes
