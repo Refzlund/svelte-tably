@@ -198,9 +198,12 @@
 			elements.selects.scrollTop = target?.scrollTop
 		}
 
-		if (!elements.headers) return
-		elements.headers.scrollLeft = target.scrollLeft
-		elements.statusbar.scrollLeft = target.scrollLeft
+		if (elements.headers) {
+			elements.headers.scrollLeft = target.scrollLeft
+		}
+		if (elements.statusbar) {
+			elements.statusbar.scrollLeft = target.scrollLeft
+		}
 	}
 
 	// * --- CSV --- *
