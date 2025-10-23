@@ -1,0 +1,15 @@
+{
+	"rules": {
+		"indent": ["error", "tab"],
+		"no-mixed-spaces-and-tabs": "error",
+		"eslint/indent": ["error", "tab"]
+	},
+	"overrides": [
+		{
+			"files": ["**/*.svelte", "**/*.svelte.ts", "**/*.svelte.js"],
+			"rules": {
+				"no-unused-expressions": "off"
+			}
+		}
+	]
+}

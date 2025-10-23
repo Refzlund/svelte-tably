@@ -2,12 +2,12 @@ import { getContext, setContext, type Snippet } from 'svelte'
 import { ColumnState, type RowColumnCtx } from '../column/column-state.svelte.js'
 import { PanelState } from '../panel/panel-state.svelte.js'
 import { Data } from './data.svelte.js'
-import { type AnyRecord } from '../utility.svelte.js'
 import type { ExpandableState } from '../expandable/expandable-state.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import type { RowState } from '../row/row-state.svelte.js'
+import { untrack } from 'svelte'
 
-export type HeaderSelectCtx<T extends AnyRecord = any> = {
+export type HeaderSelectCtx<T = any> = {
 	isSelected: boolean
 	/** The list of selected items */
 	readonly selected: T[]
@@ -17,14 +17,14 @@ export type HeaderSelectCtx<T extends AnyRecord = any> = {
 	readonly indeterminate: boolean
 }
 
-export type RowSelectCtx<T extends AnyRecord = any> = {
+export type RowSelectCtx<T extends any = any> = {
 	readonly item: T
 	readonly row: RowColumnCtx<T, unknown>
 	data: T[]
 	isSelected: boolean
 }
 
-export interface RowCtx<T extends AnyRecord> {
+export interface RowCtx<T extends any> {
 	readonly rowHovered: boolean
 	readonly index: number
 	readonly itemState: ItemState<T> | undefined
@@ -32,7 +32,7 @@ export interface RowCtx<T extends AnyRecord> {
 	expanded: boolean
 }
 
-type SelectOptions<T extends AnyRecord> = {
+type SelectOptions<T extends any> = {
 	/**
 	 * The style, in which the selection is shown
 	 *
@@ -54,7 +54,7 @@ type SelectOptions<T extends AnyRecord> = {
 	rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
 }
 
-export type TableProps<T extends AnyRecord> = {
+export type TableProps<T extends any> = {
 	id?: string
 	data: T[]
 	selected?: T[]
@@ -78,10 +78,11 @@ export type TableProps<T extends AnyRecord> = {
 	auto?: boolean
 }
 
-export class TableState<T extends AnyRecord> {
+export class TableState<T> {
 	#props = {} as TableProps<T>
 
-	id = $state() as string
+	id = $state() as string | undefined
+	cssId = $state() as string
 
 	dataState: Data<T> = $state({} as Data<T>)
 
@@ -98,6 +99,17 @@ export class TableState<T extends AnyRecord> {
 	get selected(): T[] { return this.#props.selected ??= [] }
 	set selected(items: T[]) { this.#props.selected = items }
 
+	/** Saved positions */
+	#positions: {
+		fixed: string[]
+		sticky: string[]
+		hidden: string[]
+	} = $state({
+		fixed: [],
+		sticky: [],
+		hidden: [],
+		scroll: []
+	})
 	/** Column positions based on column ids */
 	positions = $state({
 		fixed: [] as ColumnState<T, any>[],
@@ -129,19 +141,37 @@ export class TableState<T extends AnyRecord> {
 				this.positions.hidden = this.positions.hidden.filter((column) => column !== state)
 			}
 
-			if (state.defaults.sortby)
+			if (state.defaults.sortby && !this.dataState.sortby) {
 				this.dataState.sortBy(key)
+			}
 
-			if (state.options.fixed) {
+			const saved = {
+				fixed: this.#positions.fixed.includes(key),
+				sticky: this.#positions.sticky.includes(key),
+				hidden: this.#positions.hidden.includes(key),
+				scroll: this.#positions.scroll.includes(key)
+			}
+			const isSaved = Object.values(saved).some(v => v)
+
+			if (
+				(!isSaved && state.options.fixed)
+				|| saved.fixed
+			) {
 				this.positions.fixed.push(state)
 				return clean
 			}
 
-			if (state.defaults.show === false) {
+			if (
+				(!isSaved && state.defaults.show === false)
+				|| saved.hidden
+			) {
 				this.positions.hidden.push(state)
 			}
 
-			if (state.defaults.sticky) {
+			if (
+				(!isSaved && state.defaults.sticky)
+				|| saved.sticky
+			) {
 				this.positions.sticky.push(state)
 			}
 			else {
@@ -158,14 +188,86 @@ export class TableState<T extends AnyRecord> {
 		}
 	}
 
-	static getContext<T extends AnyRecord>() {
+	static getContext<T>() {
 		return getContext('svelte-tably') as TableState<T> | undefined
+	}
+
+	/** Width of each column */
+	columnWidths = $state({}) as Record<string, number>
+
+	#save() {
+		const content = {
+			columnWidths: this.columnWidths,
+			positions: {
+				fixed: this.positions.fixed.map(c => c.id),
+				sticky: this.positions.sticky.map(c => c.id),
+				hidden: this.positions.hidden.map(c => c.id),
+				scroll: this.positions.scroll.map(c => c.id)
+			},
+			sortby: this.dataState.sortby,
+			sortReverse: this.dataState.sortReverse
+		}
+
+		localStorage.setItem(`svelte-tably:${this.id}`, JSON.stringify(content))
+	}
+
+	#saving = false
+	#scheduleSave(): void {
+		if(this.#saving) return
+		if(typeof localStorage === 'undefined') return
+		this.#saving = true
+		setTimeout(() => {
+			this.#saving = false
+			this.#save()
+		}, 1000)
+	}
+
+	#load(): {
+		columnWidths: typeof this.columnWidths
+		positions: typeof this['#positions']
+		sortby: string | undefined
+		sortReverse: boolean
+	} | null {
+		if(typeof localStorage === 'undefined') return null
+		const item = JSON.parse(localStorage.getItem(`svelte-tably:${this.id}`) || '{}')
+		item.columnWidths ??= {}
+		item.positions ??= {}
+		item.positions.fixed ??= []
+		item.positions.sticky ??= []
+		item.positions.hidden ??= []
+		item.positions.scroll ??= []
+		item.sortby ??= undefined
+		item.sortReverse ??= false
+		return item
 	}
 
 	constructor(tableProps: TableProps<T>) {
 		this.#props = tableProps
-		this.id = tableProps.id ?? Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
+		this.id = tableProps.id
+		this.cssId = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
 		this.dataState = new Data(this, tableProps)
+
+		if(this.id) {
+			// fetch from localstorage
+			const saved = this.#load()
+			if(saved) {
+				this.columnWidths = saved.columnWidths
+				this.#positions = saved.positions
+				this.dataState.sortby = saved.sortby
+				this.dataState.sortReverse = saved.sortReverse
+			}
+		}
+		
+		if(typeof window !== 'undefined') {
+			window.addEventListener('beforeunload', () => this.#save())
+		}
+		$effect(() => {
+			Object.keys(this.columnWidths)
+			Object.values(this.positions).map(v => v.length)
+			this.dataState.sortby
+			this.dataState.sortReverse
+			this.#scheduleSave()
+		})
 
 		setContext('svelte-tably', this)
 	}

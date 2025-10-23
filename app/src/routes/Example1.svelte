@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Table, { type ColumnState } from 'svelte-tably-npm'
+	import Table, { type ColumnState } from 'svelte-tably'
 	import reorder, { type ItemState } from 'runic-reorder'
 
 	import { faker } from '@faker-js/faker'
@@ -77,7 +77,7 @@
 </div>
 
 <div class="container">
-	<Table bind:this={table} bind:data bind:panel select={selectable} {filters}>
+	<Table id='a-table' bind:this={table} bind:data bind:panel select={selectable} {filters}>
 		{#snippet content({ Column, Panel, Expandable, Row, table })}
 			<Column
 				id="id"
