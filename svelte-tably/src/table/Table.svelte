@@ -30,6 +30,7 @@
 	import { SizeTween } from '../size-tween.svelte.js'
 	import { on } from 'svelte/events'
 	import Row from '../row/Row.svelte'
+	import type { CSVOptions } from './csv.js'
 
 	type T = $$Generic<Record<PropertyKey, unknown>>
 
@@ -56,6 +57,7 @@
 		selected: _selected = $bindable([]),
 		panel: _panel = $bindable(),
 		data: _data = $bindable([]),
+		table: _table = $bindable(),
 		...restProps
 	}: TableProps<T> & { content?: ContentSnippet } = $props()
 
@@ -198,25 +200,25 @@
 			elements.selects.scrollTop = target?.scrollTop
 		}
 
-		if (elements.headers) {
-			elements.headers.scrollLeft = target.scrollLeft
-		}
-		if (elements.statusbar) {
-			elements.statusbar.scrollLeft = target.scrollLeft
-		}
+		if (!elements.headers) return
+		elements.headers.scrollLeft = target.scrollLeft
+		elements.statusbar.scrollLeft = target.scrollLeft
 	}
 
 	// * --- CSV --- *
-	let csv = $state(false) as false | { selected?: boolean }
-	let csvElement = $state() as undefined | HTMLTableElement
-	interface CSVOptions {
-		/** Semi-colons as separator? */
-		semicolon?: boolean
-		/** Only selected rows */
-		selected?: boolean
+	let csv = $state(false) as false | {
+		selected: CSVOptions<T>['selected']
+		filters: CSVOptions<T>['filters']
+		columns: CSVOptions<T>['columns']
 	}
-	export async function toCSV(opts: CSVOptions = {}) {
-		csv = { selected: !!opts.selected }
+	let csvElement = $state() as undefined | HTMLTableElement
+	
+	export async function toCSV(options: CSVOptions<T> = {}) {
+		csv = {
+			selected: !!options.selected,
+			filters: options.filters ?? true,
+			columns: options.columns ?? false
+		}
 		let resolve: (value: HTMLTableElement) => void
 		const promise = new Promise<HTMLTableElement>((r) => (resolve = r))
 
@@ -231,7 +233,7 @@
 		let table = await promise
 		clean()
 
-		const separator = opts.semicolon ? ';' : ','
+		const separator = options.semicolon ? ';' : ','
 		const rows = Array.from(table.rows)
 		const csvRows = [] as string[]
 
@@ -256,6 +258,7 @@
 		csv = false
 		return csvRows.join('\n')
 	}
+	table.toCSV = toCSV
 	// * --- CSV --- *
 
 	let expandedRow = $state([]) as T[]
@@ -299,25 +302,42 @@
 			$effect(() => on(node, 'contextmenu', (e) => table.row?.events.oncontextmenu!(e, ctx)))
 		}
 	}
+
+	_table = table
 </script>
 
 <!---------------------------------------------------->
 
 {#if csv !== false}
-	{@const renderedColumns = columns.filter((v) => v.id !== '__fixed')}
+	{@const exportedColumns = 
+		csv.columns === false || csv.columns === undefined ? columns.filter((v) => v.id !== '__fixed')
+		: csv.columns === true ? [
+			...table.positions.fixed.filter(v => v.id !== '__fixed'),
+			...table.positions.sticky,
+			...table.positions.scroll
+		]
+		: csv.columns.map(id => table.columns[id]) 
+	}
+	{@const exportedData = 
+		csv.filters === true || csv.filters === undefined ? table.dataState.current
+		: table.dataState.origin /* Filtering happens on the row itself via {#if} */
+	}
+	{@const filters = Array.isArray(csv.filters) ? (csv as { filters: Array<(item: T) => boolean> }).filters : undefined}
 	<table bind:this={csvElement} hidden>
 		<thead>
 			<tr>
-				{#each renderedColumns as column}
+				{#each exportedColumns as column}
 					<th>{@render column.snippets.title()}</th>
 				{/each}
 			</tr>
 		</thead>
 		<tbody>
-			{#each table.data as row, i}
-				{#if (csv.selected && table.selected.includes(row)) || !csv.selected}
+			{#each exportedData as row, i}
+				{@const isSelected = !csv.selected || table.selected.includes(row)}
+				{@const isFiltered = filters ? filters.every((fn) => fn(row)) : true}
+				{#if isSelected && isFiltered}
 					<tr>
-						{#each renderedColumns as column}
+						{#each exportedColumns as column}
 							<td>
 								{#if column.snippets.row}
 									{@render column.snippets.row(row, {

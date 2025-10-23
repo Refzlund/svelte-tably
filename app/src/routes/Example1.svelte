@@ -31,6 +31,7 @@
 		document.body.removeChild(element)
 	}
 
+	type T = ReturnType<typeof createData>[number]
 	let data = $state(createData(500))
 
 	let panel = $state() as undefined | string
@@ -41,7 +42,7 @@
 
 	let filters = $state([]) as ((item: (typeof data)[number]) => boolean)[]
 
-	let table: Table<ReturnType<typeof createData>[number]>
+	let table: Table.State<T>
 
 	let edit = $state({}) as ReturnType<typeof person>
 </script>
@@ -49,7 +50,22 @@
 <!---------------------------------------------------->
 
 <div class='controls' style="margin: 1rem;">
-	<button onclick={() => table?.toCSV({ semicolon: true }).then((v) => download('table.csv',v))}> Get CSV </button>
+	<button
+		onclick={() => 
+			table.toCSV({
+				semicolon: true
+			}).then((v) => download('table.csv',v))
+		}
+	> Get CSV </button>
+	<button
+		onclick={() => 
+			table.toCSV({
+				semicolon: true,
+				filters: [c => c.email.endsWith('@gmail.com')],
+				columns: ['name', 'email'],
+			}).then((v) => download('table.csv',v))
+		}
+	> Get CSV (gmail only) </button>
 	<button onclick={() => (panel = panel ? undefined : 'columns')}>Toggle panel</button>
 	<button onclick={() => (selectable = !selectable)}>Toggle selectability</button>
 
@@ -77,7 +93,7 @@
 </div>
 
 <div class="container">
-	<Table id='a-table' bind:this={table} bind:data bind:panel select={selectable} {filters}>
+	<Table id='a-table' bind:table bind:data bind:panel select={selectable} {filters}>
 		{#snippet content({ Column, Panel, Expandable, Row, table })}
 			<Column
 				id="id"

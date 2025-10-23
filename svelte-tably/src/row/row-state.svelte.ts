@@ -1,8 +1,7 @@
 import { TableState, type RowCtx } from '../table/table-state.svelte.js'
-import type { AnyRecord } from '../utility.svelte.js'
 import type { Snippet } from 'svelte'
 
-type ContextOptions<T extends AnyRecord> = {
+type ContextOptions<T> = {
 	/**
 	 * Only show when hovering the row?
 	 * @default true
@@ -14,7 +13,7 @@ type ContextOptions<T extends AnyRecord> = {
 	width?: string
 }
 
-export interface RowProps<T extends AnyRecord> {
+export interface RowProps<T> {
 	/**
 	 * A sticky context column on the right of each table
 	*/
@@ -26,7 +25,7 @@ export interface RowProps<T extends AnyRecord> {
 	oncontextmenu?: (event: MouseEvent, ctx: RowCtx<T>) => void
 }
 
-export class RowState<T extends AnyRecord> {
+export class RowState<T> {
 	#table: TableState<T>
 	#props = {} as RowProps<T>
 

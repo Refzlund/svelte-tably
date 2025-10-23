@@ -5,7 +5,7 @@ import { Data } from './data.svelte.js'
 import type { ExpandableState } from '../expandable/expandable-state.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import type { RowState } from '../row/row-state.svelte.js'
-import { untrack } from 'svelte'
+import { CSVOptions } from "./csv.js";
 
 export type HeaderSelectCtx<T = any> = {
 	isSelected: boolean
@@ -56,6 +56,8 @@ type SelectOptions<T extends any> = {
 
 export type TableProps<T extends any> = {
 	id?: string
+	/** Bindable to TableState; `bind:table` */
+	table?: TableState<T> 
 	data: T[]
 	selected?: T[]
 	/** Current visible panel */
@@ -104,6 +106,7 @@ export class TableState<T> {
 		fixed: string[]
 		sticky: string[]
 		hidden: string[]
+		scroll: string[]
 	} = $state({
 		fixed: [],
 		sticky: [],
@@ -223,8 +226,13 @@ export class TableState<T> {
 	}
 
 	#load(): {
-		columnWidths: typeof this.columnWidths
-		positions: typeof this['#positions']
+		columnWidths: Record<string, number>
+		positions: {
+			fixed: string[]
+			sticky: string[]
+			hidden: string[]
+			scroll: string[]
+		}
 		sortby: string | undefined
 		sortReverse: boolean
 	} | null {
@@ -239,6 +247,11 @@ export class TableState<T> {
 		item.sortby ??= undefined
 		item.sortReverse ??= false
 		return item
+	}
+
+	async toCSV(options: CSVOptions<T> = {}): Promise<string> {
+		options
+		return ''
 	}
 
 	constructor(tableProps: TableProps<T>) {
