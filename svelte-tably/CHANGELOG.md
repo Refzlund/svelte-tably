@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.1.1
+
+### Patch Changes
+
+- fix: saved tables do not preserve column order ([#15](https://github.com/Refzlund/svelte-tably/pull/15))
+
 ## 1.1.0
 
 ### Minor Changes
