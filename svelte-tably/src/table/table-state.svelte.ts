@@ -136,6 +136,25 @@ export class TableState<T> {
 			const key = state.id
 			this.columns[key] = state
 
+			const insertBySavedOrder = (
+				arr: ColumnState<T, any>[],
+				item: ColumnState<T, any>,
+				savedOrder: string[]
+			) => {
+				const idx = savedOrder.indexOf(item.id)
+				if (idx === -1) {
+					arr.push(item)
+					return
+				}
+				let i = 0
+				for (; i < arr.length; i++) {
+					const otherIdx = savedOrder.indexOf(arr[i].id)
+					if (otherIdx === -1) continue
+					if (otherIdx > idx) break
+				}
+				arr.splice(i, 0, item)
+			}
+
 			const clean = () => {
 				delete this.columns[key]
 				this.positions.fixed = this.positions.fixed.filter((column) => column !== state)
@@ -160,7 +179,7 @@ export class TableState<T> {
 				(!isSaved && state.options.fixed)
 				|| saved.fixed
 			) {
-				this.positions.fixed.push(state)
+				insertBySavedOrder(this.positions.fixed, state, this.#positions.fixed)
 				return clean
 			}
 
@@ -168,17 +187,17 @@ export class TableState<T> {
 				(!isSaved && state.defaults.show === false)
 				|| saved.hidden
 			) {
-				this.positions.hidden.push(state)
+				insertBySavedOrder(this.positions.hidden, state, this.#positions.hidden)
 			}
 
 			if (
 				(!isSaved && state.defaults.sticky)
 				|| saved.sticky
 			) {
-				this.positions.sticky.push(state)
+				insertBySavedOrder(this.positions.sticky, state, this.#positions.sticky)
 			}
 			else {
-				this.positions.scroll.push(state)
+				insertBySavedOrder(this.positions.scroll, state, this.#positions.scroll)
 			}
 
 			return clean
@@ -276,7 +295,8 @@ export class TableState<T> {
 		}
 		$effect(() => {
 			Object.keys(this.columnWidths)
-			Object.values(this.positions).map(v => v.length)
+			// Track order changes by observing the id sequences
+			Object.values(this.positions).map(arr => arr.map(c => c.id).join('|'))
 			this.dataState.sortby
 			this.dataState.sortReverse
 			this.#scheduleSave()
