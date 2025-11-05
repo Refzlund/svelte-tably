@@ -5,9 +5,12 @@
 ### Minor Changes
 
 - feat: export csv via table-state; `table.toCSV` ([#13](https://github.com/Refzlund/svelte-tably/pull/13))
-  feat: `toCSV` can now accept `columns` and `filters`
-  feat: allowwed bind:table to bind table-state
-  feat: added `Table.State` type
+
+- feat: `toCSV` can now accept `columns` and `filters`
+
+- feat: allowwed bind:table to bind table-state
+
+- feat: added `Table.State` type
 
 - feat: save table settings to localstorage ([#10](https://github.com/Refzlund/svelte-tably/pull/10))
 
