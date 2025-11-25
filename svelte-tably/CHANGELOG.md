@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.1.2
+
+### Patch Changes
+
+- fix: prevent scroll errors on undefined elements ([#17](https://github.com/Refzlund/svelte-tably/pull/17))
+
 ## 1.1.1
 
 ### Patch Changes
