@@ -217,7 +217,15 @@ export class TableState<T> {
 	/** Width of each column */
 	columnWidths = $state({}) as Record<string, number>
 
+	#storageKey() {
+		if (!this.id) return null
+		return `svelte-tably:${this.id}`
+	}
+
 	#save() {
+		const key = this.#storageKey()
+		if (!key) return
+
 		const content = {
 			columnWidths: this.columnWidths,
 			positions: {
@@ -230,13 +238,29 @@ export class TableState<T> {
 			sortReverse: this.dataState.sortReverse
 		}
 
-		localStorage.setItem(`svelte-tably:${this.id}`, JSON.stringify(content))
+		let storage: Storage
+		try {
+			storage = localStorage
+		} catch {
+			return
+		}
+
+		try {
+			storage.setItem(key, JSON.stringify(content))
+		} catch {
+			return
+		}
 	}
 
 	#saving = false
 	#scheduleSave(): void {
 		if(this.#saving) return
-		if(typeof localStorage === 'undefined') return
+		if(!this.#storageKey()) return
+		try {
+			localStorage
+		} catch {
+			return
+		}
 		this.#saving = true
 		setTimeout(() => {
 			this.#saving = false
@@ -255,8 +279,24 @@ export class TableState<T> {
 		sortby: string | undefined
 		sortReverse: boolean
 	} | null {
-		if(typeof localStorage === 'undefined') return null
-		const item = JSON.parse(localStorage.getItem(`svelte-tably:${this.id}`) || '{}')
+		const key = this.#storageKey()
+		if (!key) return null
+
+		let storage: Storage
+		try {
+			storage = localStorage
+		} catch {
+			return null
+		}
+
+		let raw: string | null = null
+		try {
+			raw = storage.getItem(key)
+		} catch {
+			return null
+		}
+
+		const item = JSON.parse(raw || '{}')
 		item.columnWidths ??= {}
 		item.positions ??= {}
 		item.positions.fixed ??= []
