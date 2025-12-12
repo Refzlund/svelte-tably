@@ -1,5 +1,15 @@
 # svelte-tably
 
+## 1.3.0
+
+### Minor Changes
+
+- feat(row): add alignHeaderToRows option ([#23](https://github.com/Refzlund/svelte-tably/pull/23))
+
+### Patch Changes
+
+- fix(table): harden localStorage persistence ([#23](https://github.com/Refzlund/svelte-tably/pull/23))
+
 ## 1.2.0
 
 ### Minor Changes
