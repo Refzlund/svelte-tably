@@ -1,53 +1,47 @@
 <script lang='ts'>
 	import Table from 'svelte-tably'
+	import { createSimpleData, createWideData, type SimpleRow, type WideRow } from './repro-data'
 
 	type Tab = 'expandable' | 'context-border' | 'ownership'
 	let tab = $state<Tab>('expandable')
 
-	type WideRow = {
-		id: number
-		name: string
-		email: string
-		maturity: string
-		colA: string
-		colB: string
-		colC: string
-		colD: string
-		colE: string
-		colF: string
-	}
-
-	const wideData: WideRow[] = Array.from({ length: 50 }, (_, i) => {
-		const n = i + 1
-		return {
-			id: n,
-			name: `Person ${n}`,
-			email: `person.${n}@example.com`,
-			maturity: n % 2 === 0 ? 'Adult' : 'Adolescent',
-			colA: `A-${n} — lorem ipsum dolor sit amet`,
-			colB: `B-${n} — consectetur adipiscing elit`,
-			colC: `C-${n} — sed do eiusmod tempor`,
-			colD: `D-${n} — incididunt ut labore`,
-			colE: `E-${n} — et dolore magna aliqua`,
-			colF: `F-${n} — ut enim ad minim veniam`
-		}
-	})
-
-	type SimpleRow = {
-		name: string
-		age: number
-	}
+	const wideData = createWideData()
 
 	let alignHeaderToRows = $state(true)
+	let simpleData = $state<SimpleRow[]>(createSimpleData())
 
-	let simpleData = $state<SimpleRow[]>([
-		{ name: 'Dog', age: 12 },
-		{ name: 'Shiba', age: 21 },
-		{ name: 'Cat', age: 28 },
-		{ name: 'Pig', age: 10 },
-		{ name: 'Crow', age: 30 },
-		{ name: 'Giraffe', age: 26 }
-	])
+	const uid = 'fix-new-bugs'
+
+	const tabOrder: Tab[] = ['expandable', 'context-border', 'ownership']
+
+	const tabIds: Record<Tab, string> = {
+		expandable: uid + '-tab-expandable',
+		'context-border': uid + '-tab-context-border',
+		ownership: uid + '-tab-ownership'
+	}
+
+	const panelIds: Record<Tab, string> = {
+		expandable: uid + '-panel-expandable',
+		'context-border': uid + '-panel-context-border',
+		ownership: uid + '-panel-ownership'
+	}
+
+	function onTabKeydown(event: KeyboardEvent) {
+		const currentIndex = tabOrder.indexOf(tab)
+		if (currentIndex === -1) return
+
+		let nextIndex = currentIndex
+		if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabOrder.length
+		else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length
+		else if (event.key === 'Home') nextIndex = 0
+		else if (event.key === 'End') nextIndex = tabOrder.length - 1
+		else return
+
+		event.preventDefault()
+		const next = tabOrder[nextIndex]
+		tab = next
+		requestAnimationFrame(() => document.getElementById(tabIds[next])?.focus())
+	}
 </script>
 
 <div class='page'>
@@ -56,14 +50,46 @@
 		Use the tabs below. Each tab is a minimal reproduction and includes quick steps + what to look for.
 	</p>
 
-	<div class='tabs'>
-		<button class:selected={tab === 'expandable'} onclick={() => (tab = 'expandable')}>1) Expandable horizontal scroll</button>
-		<button class:selected={tab === 'context-border'} onclick={() => (tab = 'context-border')}>2) Row context border</button>
-		<button class:selected={tab === 'ownership'} onclick={() => (tab = 'ownership')}>3) Ownership + localStorage sandbox</button>
+	<div class='tabs' role='tablist' aria-label='Bug reproductions'>
+		<button
+			id={tabIds.expandable}
+			type='button'
+			role='tab'
+			aria-selected={tab === 'expandable'}
+			aria-controls={panelIds.expandable}
+			class:selected={tab === 'expandable'}
+			onkeydown={onTabKeydown}
+			onclick={() => (tab = 'expandable')}
+		>1) Expandable horizontal scroll</button>
+		<button
+			id={tabIds['context-border']}
+			type='button'
+			role='tab'
+			aria-selected={tab === 'context-border'}
+			aria-controls={panelIds['context-border']}
+			class:selected={tab === 'context-border'}
+			onkeydown={onTabKeydown}
+			onclick={() => (tab = 'context-border')}
+		>2) Row context border</button>
+		<button
+			id={tabIds.ownership}
+			type='button'
+			role='tab'
+			aria-selected={tab === 'ownership'}
+			aria-controls={panelIds.ownership}
+			class:selected={tab === 'ownership'}
+			onkeydown={onTabKeydown}
+			onclick={() => (tab = 'ownership')}
+		>3) Ownership + localStorage sandbox</button>
 	</div>
 
 	{#if tab === 'expandable'}
-		<section class='card'>
+		<div
+			class='card'
+			role='tabpanel'
+			id={panelIds.expandable}
+			aria-labelledby={tabIds.expandable}
+		>
 			<h3>Bug 1 — Expandable area scrolls horizontally</h3>
 			<ol class='steps'>
 				<li>Hover a row to reveal the chevron, then click to expand.</li>
@@ -101,9 +127,14 @@
 					{/snippet}
 				</Table>
 			</div>
-		</section>
+		</div>
 	{:else if tab === 'context-border'}
-		<section class='card'>
+		<div
+			class='card'
+			role='tabpanel'
+			id={panelIds['context-border']}
+			aria-labelledby={tabIds['context-border']}
+		>
 			<h3>Bug 2 — Row context column border visible when button hidden</h3>
 			<ol class='steps'>
 				<li>Do not hover any rows.</li>
@@ -135,9 +166,14 @@
 					{/snippet}
 				</Table>
 			</div>
-		</section>
+		</div>
 	{:else}
-		<section class='card'>
+		<div
+			class='card'
+			role='tabpanel'
+			id={panelIds.ownership}
+			aria-labelledby={tabIds.ownership}
+		>
 			<h3>Bug 3 — Ownership invalid mutation + sandboxed localStorage error</h3>
 			<p class='expected'>Open the browser console for both parts below.</p>
 
@@ -173,7 +209,7 @@
 					</ol>
 				</div>
 			</div>
-		</section>
+		</div>
 	{/if}
 </div>
 

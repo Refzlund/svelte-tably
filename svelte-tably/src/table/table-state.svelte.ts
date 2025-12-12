@@ -222,6 +222,14 @@ export class TableState<T> {
 		return `svelte-tably:${this.id}`
 	}
 
+	#getStorage(): Storage | null {
+		try {
+			return localStorage
+		} catch {
+			return null
+		}
+	}
+
 	#save() {
 		const key = this.#storageKey()
 		if (!key) return
@@ -238,12 +246,8 @@ export class TableState<T> {
 			sortReverse: this.dataState.sortReverse
 		}
 
-		let storage: Storage
-		try {
-			storage = localStorage
-		} catch {
-			return
-		}
+		const storage = this.#getStorage()
+		if (!storage) return
 
 		try {
 			storage.setItem(key, JSON.stringify(content))
@@ -256,11 +260,7 @@ export class TableState<T> {
 	#scheduleSave(): void {
 		if(this.#saving) return
 		if(!this.#storageKey()) return
-		try {
-			localStorage
-		} catch {
-			return
-		}
+		if(!this.#getStorage()) return
 		this.#saving = true
 		setTimeout(() => {
 			this.#saving = false
@@ -282,12 +282,8 @@ export class TableState<T> {
 		const key = this.#storageKey()
 		if (!key) return null
 
-		let storage: Storage
-		try {
-			storage = localStorage
-		} catch {
-			return null
-		}
+		const storage = this.#getStorage()
+		if (!storage) return null
 
 		let raw: string | null = null
 		try {

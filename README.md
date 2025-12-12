@@ -255,6 +255,7 @@ This component can add a context-menu on the side of each row, as well as provid
 | - | - | - |
 | hover? | Only show when hovering? | `boolean` |
 | width? | The width for the context-column | `string` |
+| alignHeaderToRows? | If enabled, the header and row context cells share the same measured width | `boolean` |
 
 <br>
 

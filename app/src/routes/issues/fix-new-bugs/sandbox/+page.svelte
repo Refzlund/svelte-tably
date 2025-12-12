@@ -1,19 +1,8 @@
 <script lang='ts'>
 	import Table from 'svelte-tably'
+	import { createSimpleData, type SimpleRow } from '../repro-data'
 
-	type Row = {
-		name: string
-		age: number
-	}
-
-	let data = $state<Row[]>([
-		{ name: 'Dog', age: 12 },
-		{ name: 'Shiba', age: 21 },
-		{ name: 'Cat', age: 28 },
-		{ name: 'Pig', age: 10 },
-		{ name: 'Crow', age: 30 },
-		{ name: 'Giraffe', age: 26 }
-	])
+	let data = $state<SimpleRow[]>(createSimpleData())
 </script>
 
 <div class='page'>
