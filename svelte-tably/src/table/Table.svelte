@@ -149,6 +149,65 @@
 	const getWidth = (key: string, def: number = 150) =>
 		table.columnWidths[key] ??= table.columns[key]?.defaults.width ?? def
 
+	const measureContextCellWidth = (cell: HTMLElement | null) => {
+		if (!cell) return 0
+		const inner = cell.querySelector(':scope > .context-inner') as HTMLElement | null
+		const content = inner?.firstElementChild as HTMLElement | null
+		const candidates = [cell, inner, content].filter(Boolean) as HTMLElement[]
+		let width = 0
+		for (const el of candidates) {
+			width = Math.max(
+				width,
+				Math.ceil(el.getBoundingClientRect().width),
+				Math.ceil(el.scrollWidth)
+			)
+		}
+		return width
+	}
+
+	let contextWidth = $state(0)
+	let contextWidthRaf = 0
+	$effect(() => {
+		if (!mount.isMounted) {
+			contextWidth = 0
+			if (contextWidthRaf) cancelAnimationFrame(contextWidthRaf)
+			return
+		}
+		if (!table.row?.snippets.context) {
+			contextWidth = 0
+			if (contextWidthRaf) cancelAnimationFrame(contextWidthRaf)
+			return
+		}
+		if (!table.row?.options.context.alignHeaderToRows) {
+			contextWidth = 0
+			if (contextWidthRaf) cancelAnimationFrame(contextWidthRaf)
+			return
+		}
+
+		virtualization.topIndex
+		if (contextWidthRaf) cancelAnimationFrame(contextWidthRaf)
+		contextWidthRaf = requestAnimationFrame(() => {
+			const headerCell = elements.headers?.querySelector(
+				'[data-tably-context-measure="header"]'
+			) as HTMLElement | null
+			const rowCell = virtualization.viewport.element?.querySelector(
+				'[data-tably-context-measure="row"]'
+			) as HTMLElement | null
+
+			const width = Math.max(
+				measureContextCellWidth(headerCell),
+				measureContextCellWidth(rowCell)
+			)
+			if (width > 0 && width !== contextWidth) {
+				contextWidth = width
+			}
+		})
+
+		return () => {
+			if (contextWidthRaf) cancelAnimationFrame(contextWidthRaf)
+		}
+	})
+
 	/** grid-template-columns for widths */
 	let style = $state('')
 	$effect(() => {
@@ -157,7 +216,7 @@
 			return
 		}
 
-		const context = table.row?.snippets.context ? ` ${table.row?.options.context.width}` : ''
+		const context = table.row?.snippets.context ? ' var(--tably-context-width)' : ''
 
 		const templateColumns =
 			columns
@@ -177,6 +236,7 @@
 
 		const tbodyTemplateColumns = `
 	[data-area-class='${table.cssId}'] tr.row,
+	[data-area-class='${table.cssId}'] tr.expandable,
 	[data-area-class='${table.cssId}'] tr.filler,
 	[data-svelte-tably="${table.cssId}"] > tbody::after {
 		grid-template-columns: ${templateColumns};
@@ -242,7 +302,8 @@
 	}
 
 	let tbody = $state({
-		scrollbar: 0
+		scrollbar: 0,
+		viewportWidth: 0
 	})
 
 	function observeScrollbar(node: HTMLElement) {
@@ -251,6 +312,7 @@
 		const update = () => {
 			// Reserve the same gutter in header/footer as the scrollable body
 			tbody.scrollbar = Math.max(0, node.offsetWidth - node.clientWidth)
+			tbody.viewportWidth = node.clientWidth
 		}
 
 		update()
@@ -590,9 +652,16 @@
 			return table.selected?.includes(item)
 		},
 		set selected(value) {
-			value ?
-				table.selected!.push(item)
-			:	table.selected!.splice(table.selected!.indexOf(item), 1)
+			const current = table.selected
+			if (value) {
+				if (!current.includes(item)) {
+					table.selected = [...current, item]
+				}
+				return
+			}
+			if (current.includes(item)) {
+				table.selected = current.filter((v) => v !== item)
+			}
 		},
 		get itemState() {
 			return itemState
@@ -619,10 +688,8 @@
 		use:addRowEvents={ctx}
 		onclick={(e) => {
 			if (table.expandable?.options.click === true) {
-				let target = e.target as HTMLElement
-				if (['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
-					return
-				}
+				const target = e.target
+				if (target instanceof Element && target.closest('input, textarea, button, a')) return
 				ctx.expanded = !ctx.expanded
 			}
 		}}
@@ -651,8 +718,16 @@
 			<td
 				class="context-col"
 				class:hidden={table.row?.options.context.hover && hoveredRow !== item}
+				data-tably-context-measure={
+					table.row?.options.context.alignHeaderToRows &&
+					index === virtualization.topIndex ?
+						'row'
+					:	undefined
+				}
 			>
-				{@render table.row?.snippets.context?.(item, ctx)}
+				<div class="context-inner">
+					{@render table.row?.snippets.context?.(item, ctx)}
+				</div>
 			</td>
 		{/if}
 	</tr>
@@ -668,25 +743,28 @@
 		{@const expandLabelId = `${expandId}-label`}
 		<tr class="expandable">
 			<td
+				class="expandable-cell"
 				colspan={columns.length + (table.row?.snippets.context ? 1 : 0)}
 				style="padding: 0"
 			>
-				<div
-					class="expandable-clip"
-					style="height: {Math.round(expandableTween.current)}px"
-					id={expandId}
-					role="region"
-					aria-labelledby={expandLabelId}
-					aria-hidden={!expanded}
-				>
-					<span class="sr-only" id={expandLabelId}>
-						Expanded content for {getRowLabel(item, index)}
-					</span>
+				<div class="expandable-sticky">
 					<div
-						class="expandable-content"
-						bind:offsetHeight={expandableTween.size}
+						class="expandable-clip"
+						style="height: {Math.round(expandableTween.current)}px"
+						id={expandId}
+						role="region"
+						aria-labelledby={expandLabelId}
+						aria-hidden={!expanded}
 					>
-						{@render table.expandable?.snippets.content?.(item, ctx)}
+						<span class="sr-only" id={expandLabelId}>
+							Expanded content for {getRowLabel(item, index)}
+						</span>
+						<div
+							class="expandable-content"
+							bind:offsetHeight={expandableTween.size}
+						>
+							{@render table.expandable?.snippets.content?.(item, ctx)}
+						</div>
 					</div>
 				</div>
 			</td>
@@ -698,7 +776,7 @@
 	id={table.id}
 	data-svelte-tably={table.cssId}
 	class="table svelte-tably"
-	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px; --scrollbar: {tbody.scrollbar}px;"
+	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px; --scrollbar: {tbody.scrollbar}px; --viewport-width: {tbody.viewportWidth}px; --tably-context-width: {table.row?.options.context.alignHeaderToRows && contextWidth > 0 ? `${contextWidth}px` : (table.row?.options.context.width ?? 'max-content')};"
 	aria-rowcount={table.data.length}
 >
 	{#if columns.some((v) => v.snippets.header)}
@@ -721,11 +799,14 @@
 				{#if table.row?.snippets.context}
 					<th
 						class="context-col"
+						data-tably-context-measure={table.row?.options.context.alignHeaderToRows ? 'header' : undefined}
 						aria-hidden={table.row?.snippets.contextHeader ? undefined : true}
 						role={table.row?.snippets.contextHeader ? undefined : 'presentation'}
 					>
 						{#if table.row?.snippets.contextHeader}
-							{@render table.row?.snippets.contextHeader()}
+							<div class="context-inner">
+								{@render table.row?.snippets.contextHeader()}
+							</div>
 						{/if}
 					</th>
 				{/if}
@@ -963,7 +1044,7 @@
 	{#each autoSchema.keys as key}
 		<Column
 			id={key}
-				value={(r) => (r as any)?.[key]}
+			value={(r) => (r as any)?.[key]}
 			header={capitalize(segmentize(key))}
 			sort={typeof autoSchema.sample?.[key] === 'number' ?
 				(a, b) => a - b
@@ -996,17 +1077,26 @@
 		justify-content: center;
 		position: sticky;
 		right: 0;
-		height: 100%;
 		z-index: 3;
 		padding: 0;
+		border-left: 1px solid var(--tably-border);
 		&.hidden {
 			pointer-events: none;
 			user-select: none;
-			background: none;
-			> :global(*) {
-				opacity: 0;
+			border-left: none;
+			> .context-inner {
+				visibility: hidden;
 			}
 		}
+	}
+
+	.context-inner {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: calc(var(--tably-padding-y) / 2) 0;
+		overflow: clip;
+		width: 100%;
 	}
 
 	.table::before {
@@ -1016,6 +1106,9 @@
 		align-self: stretch;
 		width: var(--scrollbar, 0px);
 		background-color: var(--tably-bg);
+		border-bottom: 1px solid var(--tably-border);
+		border-right: 1px solid var(--tably-border);
+		margin-right: -1px;
 		pointer-events: none;
 		position: relative;
 		z-index: 4;
@@ -1028,6 +1121,8 @@
 		align-self: stretch;
 		width: var(--scrollbar, 0px);
 		background-color: var(--tably-statusbar);
+		border-right: 1px solid var(--tably-border);
+		margin-right: -1px;
 		pointer-events: none;
 		position: relative;
 		z-index: 4;
@@ -1061,11 +1156,28 @@
 		}
 	}
 
+	.expandable-cell {
+		grid-column: 1 / -1;
+		display: block;
+		min-width: 0;
+		width: 100%;
+	}
+
+	.expandable-sticky {
+		position: sticky;
+		left: 0;
+		width: var(--viewport-width, 100%);
+		min-width: 0;
+		display: block;
+		background-color: var(--tably-bg);
+		z-index: 1;
+	}
+
 	.expandable-clip {
 		overflow: hidden;
 		width: 100%;
 		background-color: var(--tably-bg);
-		box-shadow: inset 0 -1px 0 var(--tably-border-grid);
+		border-bottom: 1px solid var(--tably-border-grid);
 	}
 
 	.expandable-content {
@@ -1073,6 +1185,7 @@
 		width: 100%;
 		background-color: var(--tably-bg);
 		box-sizing: border-box;
+		min-width: 0;
 	}
 
 	.expand-row {
@@ -1128,12 +1241,17 @@
 		align-items: center;
 		justify-content: center;
 		gap: 0.25rem;
+		background-color: transparent;
 		position: absolute;
 		top: 0;
 		left: 0;
 		right: 0;
 		bottom: 0;
 		width: 100%;
+	}
+
+	.__fixed > * {
+		background-color: transparent;
 	}
 
 	thead {
@@ -1247,19 +1365,18 @@
 		overflow: hidden;
 		min-width: 0;
 		padding-right: var(--scrollbar, 0px);
+		border-bottom: 1px solid var(--tably-border);
 	}
 
 	.headers > tr > .column {
 		width: auto !important;
-		border-bottom: 1px solid var(--tably-border);
 	}
-	.headers > tr > .column,
-	.headers > tr > .context-col {
-		border-bottom: 1px solid var(--tably-border);
+	.headers > tr > .column:not(:first-child) {
 		border-left: 1px solid var(--tably-border-grid);
 	}
 
 	.headers > tr > .context-col {
+		border-left: 1px solid var(--tably-border);
 		background-color: var(--tably-bg);
 	}
 
@@ -1300,7 +1417,7 @@
 	}
 	.statusbar > tr > .context-col {
 		border-top: 1px solid var(--tably-border);
-		border-left: 1px solid var(--tably-border-grid);
+		border-left: 1px solid var(--tably-border);
 	}
 
 	.statusbar > tr > .context-col {
@@ -1345,14 +1462,28 @@
 		}
 	}
 
+	.row > .context-col {
+		background-color: var(--tably-bg);
+	}
+
+	.row > .context-col.hidden {
+		background-color: transparent;
+	}
+
 	:global(#runic-drag .row) {
 		border: 1px solid var(--tably-border-grid);
 		border-top: 2px solid var(--tably-border-grid);
 	}
 
-	.row > *,
-	.filler > * {
+	.headers > tr > .column:not(:first-child),
+	.row > .column:not(:first-child),
+	.filler > .column:not(:first-child),
+	.statusbar > tr > .column:not(:first-child) {
 		border-left: 1px solid var(--tably-border-grid);
+	}
+
+	.row,
+	.filler {
 		border-bottom: 1px solid var(--tably-border-grid);
 	}
 

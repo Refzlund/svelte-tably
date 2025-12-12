@@ -11,9 +11,17 @@ type ContextOptions<T> = {
 	*/
 	hover?: boolean
 	/**
-	 * @defualt 'max-content'
+	 * @default 'max-content'
 	 */
 	width?: string
+	/**
+	 * Align the header context cell (if any) with the row context cell.
+	 *
+	 * When enabled, the table measures the rendered context cell width
+	 * (from header and rows) and uses a shared fixed width so they line up.
+	 * @default false
+	 */
+	alignHeaderToRows?: boolean
 }
 
 export interface RowProps<T> {
@@ -45,7 +53,8 @@ export class RowState<T> {
 	options = $derived({
 		context: {
 			hover: this.#props.contextOptions?.hover ?? true,
-			width: this.#props.contextOptions?.width ?? 'max-content'
+			width: this.#props.contextOptions?.width ?? 'max-content',
+			alignHeaderToRows: this.#props.contextOptions?.alignHeaderToRows ?? false
 		}
 	})
 
@@ -53,7 +62,7 @@ export class RowState<T> {
 		this.#props = props
 		this.#table = TableState.getContext<T>()!
 		if (!this.#table) {
-			throw new Error('svelte-tably: Expandable must be associated with a Table')
+			throw new Error('svelte-tably: Row must be associated with a Table')
 		}
 
 		this.#table.row = this

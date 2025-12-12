@@ -2,7 +2,7 @@
 
 Via the amazing capabilities braught to us by Svelte 5 — a performant, dynamic, flexible, feature rich table. It's as simple, or as flexible as you need it to be.
 
-Simple example on [Svelte 5 Playground](https://svelte.dev/playground/f79124e8473546d29433a95a68440d6d?version=5.16.0)
+Simple example on [Svelte 5 Playground](https://svelte.dev/playground/f79124e8473546d29433a95a68440d6d?version=5)
 <br>
 Fledged out example on [Svelte 5 Playground](https://svelte.dev/playground/a16d71c97445455e80a55b77ec1cf915?version=5)
 
@@ -255,6 +255,7 @@ This component can add a context-menu on the side of each row, as well as provid
 | - | - | - |
 | hover? | Only show when hovering? | `boolean` |
 | width? | The width for the context-column | `string` |
+| alignHeaderToRows? | If enabled, the header and row context cells share the same measured width | `boolean` |
 
 <br>
 

@@ -217,7 +217,23 @@ export class TableState<T> {
 	/** Width of each column */
 	columnWidths = $state({}) as Record<string, number>
 
+	#storageKey() {
+		if (!this.id) return null
+		return `svelte-tably:${this.id}`
+	}
+
+	#getStorage(): Storage | null {
+		try {
+			return localStorage
+		} catch {
+			return null
+		}
+	}
+
 	#save() {
+		const key = this.#storageKey()
+		if (!key) return
+
 		const content = {
 			columnWidths: this.columnWidths,
 			positions: {
@@ -230,15 +246,25 @@ export class TableState<T> {
 			sortReverse: this.dataState.sortReverse
 		}
 
-		localStorage.setItem(`svelte-tably:${this.id}`, JSON.stringify(content))
+		const storage = this.#getStorage()
+		if (!storage) return
+
+		try {
+			storage.setItem(key, JSON.stringify(content))
+		} catch {
+			return
+		}
 	}
 
 	#saving = false
+	#saveTimeout: ReturnType<typeof setTimeout> | null = null
 	#scheduleSave(): void {
 		if(this.#saving) return
-		if(typeof localStorage === 'undefined') return
+		if(!this.#storageKey()) return
+		if(!this.#getStorage()) return
 		this.#saving = true
-		setTimeout(() => {
+		if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
+		this.#saveTimeout = setTimeout(() => {
 			this.#saving = false
 			this.#save()
 		}, 1000)
@@ -255,8 +281,26 @@ export class TableState<T> {
 		sortby: string | undefined
 		sortReverse: boolean
 	} | null {
-		if(typeof localStorage === 'undefined') return null
-		const item = JSON.parse(localStorage.getItem(`svelte-tably:${this.id}`) || '{}')
+		const key = this.#storageKey()
+		if (!key) return null
+
+		const storage = this.#getStorage()
+		if (!storage) return null
+
+		let raw: string | null = null
+		try {
+			raw = storage.getItem(key)
+		} catch {
+			return null
+		}
+
+		let item: any
+		try {
+			item = JSON.parse(raw || '{}')
+		} catch {
+			return null
+		}
+		if (!item || typeof item !== 'object') item = {}
 		item.columnWidths ??= {}
 		item.positions ??= {}
 		item.positions.fixed ??= []
@@ -290,9 +334,18 @@ export class TableState<T> {
 			}
 		}
 		
-		if(typeof window !== 'undefined') {
-			window.addEventListener('beforeunload', () => this.#save())
-		}
+		$effect(() => {
+			if (typeof window === 'undefined') return
+			const handler = () => this.#save()
+			window.addEventListener('beforeunload', handler)
+			return () => window.removeEventListener('beforeunload', handler)
+		})
+		$effect(() => {
+			return () => {
+				if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
+				this.#saveTimeout = null
+			}
+		})
 		$effect(() => {
 			Object.keys(this.columnWidths)
 			// Track order changes by observing the id sequences
