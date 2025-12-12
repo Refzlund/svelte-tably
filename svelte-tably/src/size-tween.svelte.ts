@@ -1,7 +1,13 @@
-import { tick, untrack } from 'svelte'
+import { untrack } from 'svelte'
 import { sineInOut } from 'svelte/easing'
 import { Tween } from 'svelte/motion'
 import type { EasingFunction } from 'svelte/transition'
+
+const prefersReducedMotion = () => {
+	if (typeof window === 'undefined') return false
+	if (!('matchMedia' in window)) return false
+	return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 interface SizeOptions {
 	min?: number
@@ -21,7 +27,8 @@ export class SizeTween {
 
 	set target(value: number) {
 		this.transitioning = true
-		this.#tween.set(value, this.#tweenOptions).then(() => this.transitioning = false)
+		const duration = prefersReducedMotion() ? 0 : this.#tweenOptions.duration
+		this.#tween.set(value, { ...this.#tweenOptions, duration }).then(() => this.transitioning = false)
 	}
 
 	constructor(cb: () => boolean | undefined, opts: SizeOptions = {}) {

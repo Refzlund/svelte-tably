@@ -51,7 +51,7 @@ On top of that, the library API is extensive, so the table can meet your needs.
 <Table auto {data} resizeable={false} filters={[...]} />
 
 <Table {data} panel={activePanel} select bind:selected>
-    {#snippet content({ Column, Panel, Expandable, Row, state, table })}
+    {#snippet content({ Column, Panel, Expandable, Row, table })}
         <Column id='name' sticky sort value={r => r.name} filter={v => v.includes('Giraffe')}>
             {#snippet header(ctx)}
                 Name
@@ -91,6 +91,13 @@ On top of that, the library API is extensive, so the table can meet your needs.
     {/snippet}
 </Table>
 ```
+
+> [!NOTE]
+> Animations (panel/expandable) respect `prefers-reduced-motion`.
+
+> [!TIP]
+> To export CSV, you can either `bind:table` to get the `TableState` instance (which exposes `table.toCSV(...)`),
+> or `bind:this` and call the component export `toCSV(...)`.
 
 ### Styling
 

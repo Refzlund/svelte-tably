@@ -8,7 +8,7 @@
 
 -->
 
-<script lang='ts' generics='T extends Record<PropertyKey, unknown>'>
+<script lang='ts' generics='T'>
 
 	import { PanelState, type PanelProps } from './panel-state.svelte.js'
 	import { fromProps } from '../utility.svelte.js'

@@ -18,7 +18,6 @@
 	}
 
 	function download(filename: string, text: string) {
-		console.log(text)
 		var element = document.createElement('a')
 		element.setAttribute('href', 'data:text/plaincharset=utf-8,' + encodeURIComponent(text))
 		element.setAttribute('download', filename)
@@ -42,7 +41,10 @@
 
 	let filters = $state([]) as ((item: (typeof data)[number]) => boolean)[]
 
-	let table: Table.State<T>
+	type TableElement = {
+		toCSV: (options?: any) => Promise<string>
+	}
+	let tableElement = $state() as TableElement | undefined
 
 	let edit = $state({}) as ReturnType<typeof person>
 </script>
@@ -52,18 +54,18 @@
 <div class='controls' style="margin: 1rem;">
 	<button
 		onclick={() => 
-			table.toCSV({
+			tableElement?.toCSV({
 				semicolon: true
-			}).then((v) => download('table.csv',v))
+			})?.then((v) => download('table.csv', v))
 		}
 	> Get CSV </button>
 	<button
 		onclick={() => 
-			table.toCSV({
+			tableElement?.toCSV({
 				semicolon: true,
-				filters: [c => c.email.endsWith('@gmail.com')],
+				filters: [(c: (typeof data)[number]) => c.email.endsWith('@gmail.com')],
 				columns: ['name', 'email'],
-			}).then((v) => download('table.csv',v))
+			})?.then((v) => download('table.csv', v))
 		}
 	> Get CSV (gmail only) </button>
 	<button onclick={() => (panel = panel ? undefined : 'columns')}>Toggle panel</button>
@@ -93,7 +95,14 @@
 </div>
 
 <div class="container">
-	<Table id='a-table' bind:table bind:data bind:panel select={selectable} {filters}>
+	<Table
+		id='a-table'
+		bind:this={tableElement}
+		{data}
+		{filters}
+		{panel}
+		select={selectable}
+	>
 		{#snippet content({ Column, Panel, Expandable, Row, table })}
 			<Column
 				id="id"
@@ -176,7 +185,6 @@
 				contextOptions={{ hover: true }}
 				oncontextmenu={(e) => {
 					e.preventDefault()
-					console.log('hello')
 				}}
 			>
 				{#snippet contextHeader()}

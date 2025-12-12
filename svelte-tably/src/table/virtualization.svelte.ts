@@ -1,12 +1,12 @@
-import { tick, untrack } from 'svelte'
+import { untrack } from 'svelte'
 import type { TableState } from './table-state.svelte.js'
 
-export class Virtualization<T extends Record<PropertyKey, unknown>> {
+export class Virtualization<T extends any> {
 	scrollTop = $state(0)
 
 	viewport = $state({
 		height: 0,
-		element: null as HTMLDivElement | null
+		element: null as HTMLElement | null
 	})
 
 	get topIndex() { return this.#topIndex }
@@ -32,50 +32,84 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 			})
 		})
 
+		let measureRaf = 0
+		let measureRun = 0
 		$effect(() => {
 			if (!ticked) return
 			table.dataState.current
+			this.viewport.element
+			this.viewport.height
+
+			let aborted = false
+			const run = ++measureRun
 			untrack(() => {
-				if (!this.viewport.element) {
+				const target = this.viewport.element
+				if (!target) {
 					this.#heightPerItem = 8
 					return
 				}
-				tick().then(() => {
-					const target = this.viewport.element!
-					if (target.children.length === 0) return
-					const firstRow = target.children[0]?.getBoundingClientRect().top
-					const lastRow =
-						target.children[target.children.length - 1].getBoundingClientRect().bottom
-					this.#heightPerItem = (lastRow - firstRow) / this.#area.length
+
+				if (measureRaf) cancelAnimationFrame(measureRaf)
+				measureRaf = requestAnimationFrame(() => {
+					if (aborted) return
+					if (run !== measureRun) return
+
+					const el = this.viewport.element
+					if (!el) return
+
+					const rowEls = el.querySelectorAll(':scope > tr.row') as NodeListOf<HTMLElement>
+					const children = rowEls.length > 0 ? rowEls : (el.children as unknown as HTMLCollectionOf<HTMLElement>)
+					const count = children.length
+					if (count === 0) return
+
+					const first = children[0]?.getBoundingClientRect().top
+					const last = children[count - 1]?.getBoundingClientRect().bottom
+					if (first === undefined || last === undefined) return
+
+					const height = (last - first) / count
+					if (!Number.isFinite(height) || height <= 0) return
+
+					// Avoid tiny oscillations causing endless updates.
+					if (Math.abs(height - this.#heightPerItem) < 0.25) return
+					this.#heightPerItem = height
 				})
 			})
+
+			return () => {
+				aborted = true
+				if (measureRaf) cancelAnimationFrame(measureRaf)
+			}
 		})
 
-		let waitAnimationFrame = false
-
+		let virtualRaf = 0
 		$effect(() => {
 			if (!ticked) return
 			this.scrollTop
 			this.#heightPerItem
+			this.viewport.height
 			table.dataState.current.length
-			table.dataState.current
 			untrack(() => {
-				if (!waitAnimationFrame) {
-					setTimeout(() => {
-						waitAnimationFrame = false
+				if (virtualRaf) cancelAnimationFrame(virtualRaf)
+				virtualRaf = requestAnimationFrame(() => {
+					virtualRaf = 0
+					const heightPerItem = this.#heightPerItem || 8
+					const spacing = this.#spacing
 
-						let virtualTop = Math.max(this.scrollTop - this.#spacing, 0)
-						virtualTop -= virtualTop % this.#heightPerItem
+					let virtualTop = Math.max(this.scrollTop - spacing, 0)
+					if (heightPerItem > 0) {
+						virtualTop -= virtualTop % heightPerItem
+					}
+					this.#virtualTop = virtualTop
 
-						this.#virtualTop = virtualTop
-
-						let virtualBottom = this.#heightPerItem * table.dataState.current.length - virtualTop - this.#spacing * 4
-						virtualBottom = Math.max(virtualBottom, 0)
-						this.#virtualBottom = virtualBottom
-					}, 1000 / 60)
-				}
-				waitAnimationFrame = true
+					let virtualBottom = heightPerItem * table.dataState.current.length - virtualTop - spacing * 4
+					if (!Number.isFinite(virtualBottom)) virtualBottom = 0
+					this.#virtualBottom = Math.max(virtualBottom, 0)
+				})
 			})
+
+			return () => {
+				if (virtualRaf) cancelAnimationFrame(virtualRaf)
+			}
 		})
 
 		$effect(() => {
@@ -84,10 +118,14 @@ export class Virtualization<T extends Record<PropertyKey, unknown>> {
 			table.dataState.sortby
 			this.#heightPerItem
 			this.#virtualTop
+			this.viewport.height
+			this.#renderItemLength
 			table.dataState.current.length
 			table.dataState.current
 			untrack(() => {
-				this.#topIndex = Math.round(this.#virtualTop / this.#heightPerItem || 0)
+				const heightPerItem = this.#heightPerItem || 8
+				this.#topIndex = Math.round(this.#virtualTop / heightPerItem || 0)
+				if (this.#topIndex < 0) this.#topIndex = 0
 				const end = this.#topIndex + this.#renderItemLength
 				this.#area = table.dataState.current.slice(this.#topIndex, end)
 			})
