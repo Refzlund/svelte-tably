@@ -1,4 +1,4 @@
-import { onMount, Snippet } from 'svelte'
+import { onMount, type Snippet } from 'svelte'
 
 export type Simplify<T> = T extends infer V ? {
 	[K in keyof V]: V[K]
@@ -14,7 +14,7 @@ export function pick<T extends Record<PropertyKey, any>, K extends (keyof T)[]>(
 
 export function boundPick<T extends Record<PropertyKey, any>, K extends (keyof T)[]>(item: T, keys: K) {
 	const obj = {} as SetterRecord
-	for(const key in keys) {
+	for (const key of keys) {
 		obj[key] = [() => item[key], (v: any) => item[key] = v]
 	}
 	return Object.defineProperties({}, withSetters(obj))
@@ -41,7 +41,7 @@ export function boundAssign(item: Record<PropertyKey, any>, props: Partial<Recor
 			continue
 		}
 
-		Object.defineProperty(item, value, {
+		Object.defineProperty(item, key, {
 			get() { return props[key] },
 			set(v) { props[key] = v }
 		})

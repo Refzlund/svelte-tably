@@ -11,10 +11,9 @@
 <script lang='ts'>
 
 	import { ExpandableState, type ExpandableProps } from './expandable-state.svelte.js'
-	import type { AnyRecord } from '../utility.svelte.js'
 	import { fromProps } from '../utility.svelte.js'
 
-	type T = $$Generic<AnyRecord>
+	type T = $$Generic
 
 	let { ...restProps }: ExpandableProps<T> = $props()
 	

@@ -5,7 +5,7 @@ import { Data } from './data.svelte.js'
 import type { ExpandableState } from '../expandable/expandable-state.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import type { RowState } from '../row/row-state.svelte.js'
-import { CSVOptions } from "./csv.js";
+import type { CSVOptions } from './csv.js'
 
 export type HeaderSelectCtx<T = any> = {
 	isSelected: boolean

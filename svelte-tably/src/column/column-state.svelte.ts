@@ -111,7 +111,7 @@ type ColumnOptions<T, V> = {
 	 * This ensures the child element "fills" the whole column.  
 	 * Ex. good if you want to make the column an anchor link; `<a href='...'>`
 	*/
-	pad?: 'row' | 'header' | 'both'
+	pad?: 'row' | 'header' | 'statusbar' | 'both'
 }
 
 
@@ -164,7 +164,8 @@ export class ColumnState<T = any, V = any> {
 		class: this.#props.class,
 		onclick: this.#props.onclick,
 		padRow: this.#props.pad === 'row' || this.#props.pad === 'both',
-		padHeader: this.#props.pad === 'header' || this.#props.pad === 'both'
+		padHeader: this.#props.pad === 'header' || this.#props.pad === 'both',
+		padStatusbar: this.#props.pad === 'statusbar'
 	})
 
 	toggleVisiblity() {

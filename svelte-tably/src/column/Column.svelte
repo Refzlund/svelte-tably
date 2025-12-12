@@ -23,7 +23,7 @@
 	import { fromProps, snippetLiteral } from '../utility.svelte.js'
 	import { ColumnState, type ColumnProps, type HeaderCtx, type ColumnSnippets } from './column-state.svelte.js'
 
-	type T = $$Generic<Record<PropertyKey, any>>
+	type T = $$Generic
 	type V = $$Generic
 
 	let {...props}: ColumnProps<T, V> = $props()

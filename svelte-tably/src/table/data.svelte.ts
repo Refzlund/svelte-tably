@@ -69,7 +69,7 @@ export class Data<T> {
 
 		this.origin = props.data
 
-		this.sorted = this.origin.toSorted()
+		this.sorted = [...this.origin]
 		this.filtered = this.sorted
 
 		$effect(() => {
@@ -86,17 +86,30 @@ export class Data<T> {
 			const table = this.#table
 			if (props.reorderable) return
 
-			const filters = [...props.filters ?? []] as ((item: T) => boolean)[]
+			// Track dependencies explicitly
+			props.filters
+			this.sorted
 			for (const key in table.columns) {
-				const filter = table.columns[key].options.filter
-				const valueOf = table.columns[key].options.value
-				if (filter && valueOf) {
-					filters.push((item) => filter(valueOf(item)))
-				}
+				table.columns[key].options.filter
+				table.columns[key].options.value
 			}
 
+			const filters = untrack(() => {
+				const all = [...props.filters ?? []] as ((item: T) => boolean)[]
+				for (const key in table.columns) {
+					const filter = table.columns[key].options.filter
+					const valueOf = table.columns[key].options.value
+					if (filter && valueOf) {
+						all.push((item) => filter(valueOf(item)))
+					}
+				}
+				return all
+			})
 
-			this.filtered = filters.length === 0 ? this.sorted : this.sorted.filter((value) => filters.every((filter) => filter(value)))
+			this.filtered =
+				filters.length === 0 ?
+					this.sorted
+				:	this.sorted.filter((value) => filters.every((filter) => filter(value)))
 		})
 	}
 

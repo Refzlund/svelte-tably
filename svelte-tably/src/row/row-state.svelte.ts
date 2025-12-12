@@ -3,7 +3,10 @@ import type { Snippet } from 'svelte'
 
 type ContextOptions<T> = {
 	/**
-	 * Only show when hovering the row?
+	 * Only show the context *content* when hovering the row?
+	 *
+	 * Note: the context column still reserves its width in the grid.
+	 * Hover mode only hides the contents / disables interaction.
 	 * @default true
 	*/
 	hover?: boolean
