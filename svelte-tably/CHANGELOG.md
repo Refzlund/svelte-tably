@@ -1,5 +1,15 @@
 # svelte-tably
 
+## 1.2.0
+
+### Minor Changes
+
+- feat(table): export content snippet type, allow primitive row data, and support statusbar padding ([#21](https://github.com/Refzlund/svelte-tably/pull/21))
+
+### Patch Changes
+
+- fix(table): improve virtualization stability, context column rendering, and header gutter masking ([#21](https://github.com/Refzlund/svelte-tably/pull/21))
+
 ## 1.1.2
 
 ### Patch Changes
