@@ -257,12 +257,14 @@ export class TableState<T> {
 	}
 
 	#saving = false
+	#saveTimeout: ReturnType<typeof setTimeout> | null = null
 	#scheduleSave(): void {
 		if(this.#saving) return
 		if(!this.#storageKey()) return
 		if(!this.#getStorage()) return
 		this.#saving = true
-		setTimeout(() => {
+		if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
+		this.#saveTimeout = setTimeout(() => {
 			this.#saving = false
 			this.#save()
 		}, 1000)
@@ -292,7 +294,13 @@ export class TableState<T> {
 			return null
 		}
 
-		const item = JSON.parse(raw || '{}')
+		let item: any
+		try {
+			item = JSON.parse(raw || '{}')
+		} catch {
+			return null
+		}
+		if (!item || typeof item !== 'object') item = {}
 		item.columnWidths ??= {}
 		item.positions ??= {}
 		item.positions.fixed ??= []
@@ -326,9 +334,18 @@ export class TableState<T> {
 			}
 		}
 		
-		if(typeof window !== 'undefined') {
-			window.addEventListener('beforeunload', () => this.#save())
-		}
+		$effect(() => {
+			if (typeof window === 'undefined') return
+			const handler = () => this.#save()
+			window.addEventListener('beforeunload', handler)
+			return () => window.removeEventListener('beforeunload', handler)
+		})
+		$effect(() => {
+			return () => {
+				if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
+				this.#saveTimeout = null
+			}
+		})
 		$effect(() => {
 			Object.keys(this.columnWidths)
 			// Track order changes by observing the id sequences

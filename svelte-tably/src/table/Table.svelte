@@ -688,10 +688,8 @@
 		use:addRowEvents={ctx}
 		onclick={(e) => {
 			if (table.expandable?.options.click === true) {
-				let target = e.target as HTMLElement
-				if (['INPUT', 'TEXTAREA', 'BUTTON', 'A'].includes(target.tagName)) {
-					return
-				}
+				const target = e.target
+				if (target instanceof Element && target.closest('input, textarea, button, a')) return
 				ctx.expanded = !ctx.expanded
 			}
 		}}
