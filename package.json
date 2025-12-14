@@ -3,6 +3,7 @@
 	"license": "MIT",
 	"scripts": {
 		"app": "cd app && bun --bun run dev",
+		"changeset": "changeset",
 		"package": "cd svelte-tably && bun run package",
 		"publish": "bun run package && changeset publish"
 	},

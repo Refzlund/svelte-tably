@@ -81,7 +81,6 @@ for (let [key, path] of Object.entries(json.exports) as [string, string][]) {
 	path = path.replace(/^\.\/src/, './dist')
 	json.exports[key] = {
 		types: path.replace(/\.ts$/, '.d.ts'),
-		default: path.replace(/\.ts$/, '.js'),
 		svelte: path.replace(/\.ts$/, '.js')
 	}
 }
