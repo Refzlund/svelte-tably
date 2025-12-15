@@ -17,24 +17,54 @@
 		type RowSelectCtx,
 		type TableProps
 	} from './table-state.svelte.js'
-	import Column from '../column/Column.svelte'
-	import Panel from '../panel/Panel.svelte'
-	import Expandable from '../expandable/Expandable.svelte'
-	import Row from '../row/Row.svelte'
+	import type { ColumnProps } from '../column/column-state.svelte.js'
+	import type { PanelProps } from '../panel/panel-state.svelte.js'
+	import type { ExpandableProps } from '../expandable/expandable-state.svelte.js'
+	import type { RowProps } from '../row/row-state.svelte.js'
 
-	type ConstructorReturnType<C extends new (...args: any[]) => any> =
-		C extends new (...args: any[]) => infer K ? K : never
-	type ConstructorParams<C extends new (...args: any[]) => any> =
-		C extends new (...args: infer K) => any ? K : never
+	/**
+	 * Column component type with proper generic inference.
+	 * T is fixed to the table's Item type, V is inferred from the value prop.
+	 */
+	type ColumnComponentType<T> = {
+		<V>(internal: unknown, props: ColumnProps<T, V>): void
+		new <V>(options: import('svelte').ComponentConstructorOptions<ColumnProps<T, V>>): import('svelte').SvelteComponent<ColumnProps<T, V>>
+	}
+
+	/**
+	 * Panel component type.
+	 */
+	type PanelComponentType<T> = {
+		(internal: unknown, props: PanelProps<T>): void
+		new (options: import('svelte').ComponentConstructorOptions<PanelProps<T>>): import('svelte').SvelteComponent<PanelProps<T>>
+	}
+
+	/**
+	 * Expandable component type.
+	 */
+	type ExpandableComponentType<T> = {
+		(internal: unknown, props: ExpandableProps<T>): void
+		new (options: import('svelte').ComponentConstructorOptions<ExpandableProps<T>>): import('svelte').SvelteComponent<ExpandableProps<T>>
+	}
+
+	/**
+	 * Row component type.
+	 */
+	type RowComponentType<T> = {
+		(internal: unknown, props: RowProps<T>): void
+		new (options: import('svelte').ComponentConstructorOptions<RowProps<T>>): import('svelte').SvelteComponent<RowProps<T>>
+	}
 
 	export type ContentCtx<Item = any> = {
-		Column: {
-			new <V>(...args: ConstructorParams<typeof Column<Item, V>>): ConstructorReturnType<typeof Column<Item, V>>
-			<V>(...args: Parameters<typeof Column<Item, V>>): ReturnType<typeof Column<Item, V>>
-		}
-		Panel: typeof Panel<Item>
-		Expandable: typeof Expandable<Item>
-		Row: typeof Row<Item>
+		/** Column component - use to define table columns */
+		readonly Column: ColumnComponentType<Item>
+		/** Panel component - use to define side panels */
+		readonly Panel: PanelComponentType<Item>
+		/** Expandable component - use to define expandable row content */
+		readonly Expandable: ExpandableComponentType<Item>
+		/** Row component - use to configure row behavior and context menus */
+		readonly Row: RowComponentType<Item>
+		/** The table state instance */
 		readonly table: TableState<Item>
 	}
 
@@ -52,6 +82,10 @@
 	import { SizeTween } from '../size-tween.svelte.js'
 	import { on } from 'svelte/events'
 	import type { CSVOptions } from './csv.js'
+	import Column from '../column/Column.svelte'
+	import Panel from '../panel/Panel.svelte'
+	import Expandable from '../expandable/Expandable.svelte'
+	import Row from '../row/Row.svelte'
 
 	type T = $$Generic
 
@@ -61,6 +95,7 @@
 		panel: _panel = $bindable(),
 		data: _data = $bindable([]),
 		table: _table = $bindable(),
+		class: className,
 		...restProps
 	}: TableProps<T> & { content?: ContentSnippet<T> } = $props()
 
@@ -677,7 +712,7 @@
 	<tr
 		aria-rowindex={index + 1}
 		style:opacity={itemState?.positioning ? 0 : 1}
-		class="tably-row"
+		class="tably-row {table.row?.options.class ?? ''}"
 		class:tably-dragging={itemState?.dragging}
 		class:tably-selected={table.selected?.includes(item)}
 		class:tably-first={index === 0}
@@ -716,7 +751,7 @@
 		)}
 		{#if table.row?.snippets.context}
 			<td
-				class="context-col"
+				class="context-col {table.row?.options.context.class ?? ''}"
 				class:tably-hidden={table.row?.options.context.hover && hoveredRow !== item}
 				data-tably-context-measure={
 					table.row?.options.context.alignHeaderToRows &&
@@ -775,7 +810,7 @@
 <table
 	id={table.id}
 	data-svelte-tably={table.cssId}
-	class="tably-table svelte-tably"
+	class="tably-table svelte-tably {className ?? ''}"
 	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px; --scrollbar: {tbody.scrollbar}px; --viewport-width: {tbody.viewportWidth}px; --tably-context-width: {table.row?.options.context.alignHeaderToRows && contextWidth > 0 ? `${contextWidth}px` : (table.row?.options.context.width ?? 'max-content')};"
 	aria-rowcount={table.data.length}
 >
@@ -798,7 +833,7 @@
 				)}
 				{#if table.row?.snippets.context}
 					<th
-						class="context-col"
+						class="context-col {table.row?.options.context.class ?? ''}"
 						data-tably-context-measure={table.row?.options.context.alignHeaderToRows ? 'header' : undefined}
 						aria-hidden={table.row?.snippets.contextHeader ? undefined : true}
 						role={table.row?.snippets.contextHeader ? undefined : 'presentation'}

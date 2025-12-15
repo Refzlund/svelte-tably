@@ -15,5 +15,5 @@
 		"skipLibCheck": true,
 		"sourceMap": true
 	},
-	"exclude": ["npm", "svelte.config.js"]
+	"exclude": ["npm", "svelte.config.js", "_package"]
 }
