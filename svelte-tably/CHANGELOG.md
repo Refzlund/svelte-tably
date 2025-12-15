@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.3.1
+
+### Patch Changes
+
+- fix(package): default export causes pre-mature consumption ([`83dadbe`](https://github.com/Refzlund/svelte-tably/commit/83dadbe549083fece88cca337b04e8a45cd51a72))
+
 ## 1.3.0
 
 ### Minor Changes
