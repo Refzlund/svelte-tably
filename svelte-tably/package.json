@@ -14,7 +14,7 @@
 		"directory": "_package"
 	},
 	"scripts": {
-		"package": "bun --bun repo-pack"
+		"package": "bun ../node_modules/@refzlund/repo/bin/repo-pack.ts"
 	},
 	"files": [
 		"dist"
