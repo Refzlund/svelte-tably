@@ -1,5 +1,17 @@
 # svelte-tably
 
+## 1.5.0
+
+### Minor Changes
+
+- feat(styling): add class prop support to Table, Row, Column and contextOptions ([#28](https://github.com/Refzlund/svelte-tably/pull/28))
+
+### Patch Changes
+
+- fix(types): fix generic type inference for content snippet components ([#28](https://github.com/Refzlund/svelte-tably/pull/28))
+
+- refactor(css): prefix internal css classes with tably- to avoid conflicts ([#28](https://github.com/Refzlund/svelte-tably/pull/28))
+
 ## 1.4.0
 
 ### Minor Changes
