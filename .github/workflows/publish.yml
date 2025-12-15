@@ -30,7 +30,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Update npm for OIDC support
-        run: bun install -g npm@latest
+        run: npm install -g npm@latest # HAS to be `npm install`
 
       - name: Install Dependencies
         run: bun install

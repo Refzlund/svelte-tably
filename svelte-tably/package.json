@@ -11,10 +11,10 @@
 		"url": "https://github.com/Refzlund/svelte-tably/issues"
 	},
 	"publishConfig": {
-		"directory": "./npm"
+		"directory": "_package"
 	},
 	"scripts": {
-		"package": "bun ./build.ts"
+		"package": "bunx repo-pack"
 	},
 	"files": [
 		"dist"
