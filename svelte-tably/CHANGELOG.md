@@ -1,5 +1,24 @@
 # svelte-tably
 
+## 1.4.0
+
+### Minor Changes
+
+- Add `class` prop support to `<Table>`, `<Row>`, `<Column>`, and `contextOptions` ([#26](https://github.com/Refzlund/svelte-tably/pull/26))
+
+  - `<Table class="...">` - Applies class to the root `<table>` element
+  - `<Row class="...">` - Applies class to each `<tr class="row">` element
+  - `<Row contextOptions={{ class: '...' }}>` - Applies class to context column elements (`<td>` / `<th>`)
+  - `<Column class="...">` - Already supported, now documented alongside the new props
+
+### Patch Changes
+
+- Fix TypeScript generic type inference for exported component types ([#26](https://github.com/Refzlund/svelte-tably/pull/26))
+
+  The `ContentCtx` and `ContentSnippet` types now correctly propagate generic parameters in published package builds. Previously, `Column`, `Panel`, `Expandable`, and `Row` components in the content snippet context resolved to `any` due to `typeof Component<T>` patterns not working with svelte-package's generated `$$IsomorphicComponent` interface pattern.
+
+  This fix introduces explicit component type interfaces (`ColumnComponent<T>`, `PanelComponent<T>`, `ExpandableComponent<T>`, `RowComponent<T>`) that properly propagate generics through the type system.
+
 ## 1.3.1
 
 ### Patch Changes
