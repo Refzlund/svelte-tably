@@ -14,7 +14,7 @@
 		"directory": "_package"
 	},
 	"scripts": {
-		"package": "bunx repo-pack"
+		"package": "bun --bun repo-pack"
 	},
 	"files": [
 		"dist"
