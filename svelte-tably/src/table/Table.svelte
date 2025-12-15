@@ -235,9 +235,9 @@
 		`
 
 		const tbodyTemplateColumns = `
-	[data-area-class='${table.cssId}'] tr.row,
-	[data-area-class='${table.cssId}'] tr.expandable,
-	[data-area-class='${table.cssId}'] tr.filler,
+	[data-area-class='${table.cssId}'] tr.tably-row,
+	[data-area-class='${table.cssId}'] tr.tably-expandable,
+	[data-area-class='${table.cssId}'] tr.tably-filler,
 	[data-svelte-tably="${table.cssId}"] > tbody::after {
 		grid-template-columns: ${templateColumns};
 	}
@@ -248,8 +248,8 @@
 			.map((column, i, arr) => {
 				sum += getWidth(arr[i - 1]?.id, i === 0 ? 0 : undefined)
 				return `
-		[data-svelte-tably="${table.cssId}"] .column.sticky[data-column='${column.id}'],
-		[data-svelte-tably-row='${table.cssId}'] .column.sticky[data-column='${column.id}'] {
+		[data-svelte-tably="${table.cssId}"] .tably-column.tably-sticky[data-column='${column.id}'],
+		[data-svelte-tably-row='${table.cssId}'] .tably-column.tably-sticky[data-column='${column.id}'] {
 			left: ${sum}px;
 		}
 		`
@@ -261,7 +261,7 @@
 				!column.options.style ?
 					''
 				:	`
-		[data-area-class='${table.cssId}'] .column[data-column='${column.id}'] {
+		[data-area-class='${table.cssId}'] .tably-column[data-column='${column.id}'] {
 			${column.options.style}
 		}
 		`
@@ -542,18 +542,18 @@
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class={column.options.class ?? ''}
-				class:column={true}
-				class:sticky={true}
-				class:fixed={true}
+				class:tably-column={true}
+				class:tably-sticky={true}
+				class:tably-fixed={true}
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				data-column={column.id}
-				class:pad={
+				class:tably-pad={
 					(where === 'header' && column.options.padHeader) ||
 					(where === 'row' && column.options.padRow) ||
 					(where === 'statusbar' && column.options.padStatusbar)
 				}
-				class:header={isHeader}
-				class:sortable
+				class:tably-header={isHeader}
+				class:tably-sortable={sortable}
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 				onpointerenter={() => (hoveredColumn = column)}
 				onpointerleave={() => (hoveredColumn = null)}
@@ -574,20 +574,20 @@
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class={column.options.class ?? ''}
-				class:column={true}
-				class:sticky={true}
+				class:tably-column={true}
+				class:tably-sticky={true}
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
 				data-column={column.id}
-				class:pad={
+				class:tably-pad={
 					(where === 'header' && column.options.padHeader) ||
 					(where === 'row' && column.options.padRow) ||
 					(where === 'statusbar' && column.options.padStatusbar)
 				}
-				class:header={isHeader}
-				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
-				class:border={i == sticky.length - 1}
-				class:sortable
+				class:tably-header={isHeader}
+				class:tably-resizeable={isHeader && column.options.resizeable && table.options.resizeable}
+				class:tably-border={i == sticky.length - 1}
+				class:tably-sortable={sortable}
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 				onpointerenter={() => (hoveredColumn = column)}
 				onpointerleave={() => (hoveredColumn = null)}
@@ -608,17 +608,17 @@
 			<svelte:element
 				this={isHeader ? 'th' : 'td'}
 				class={column.options.class ?? ''}
-				class:column={true}
+				class:tably-column={true}
 				data-column={column.id}
-				class:pad={
+				class:tably-pad={
 					(where === 'header' && column.options.padHeader) ||
 					(where === 'row' && column.options.padRow) ||
 					(where === 'statusbar' && column.options.padStatusbar)
 				}
 				use:addRowColumnEvents={[where, column, () => args[1]]}
 				use:observeColumnWidth={isHeader}
-				class:resizeable={isHeader && column.options.resizeable && table.options.resizeable}
-				class:sortable
+				class:tably-resizeable={isHeader && column.options.resizeable && table.options.resizeable}
+				class:tably-sortable={sortable}
 				use:conditional={[isHeader, (node) => table.dataState.sortAction(node, column.id)]}
 				onpointerenter={() => (hoveredColumn = column)}
 				onpointerleave={() => (hoveredColumn = null)}
@@ -677,11 +677,11 @@
 	<tr
 		aria-rowindex={index + 1}
 		style:opacity={itemState?.positioning ? 0 : 1}
-		class="row"
-		class:dragging={itemState?.dragging}
-		class:selected={table.selected?.includes(item)}
-		class:first={index === 0}
-		class:last={index === virtualization.area.length - 1}
+		class="tably-row"
+		class:tably-dragging={itemState?.dragging}
+		class:tably-selected={table.selected?.includes(item)}
+		class:tably-first={index === 0}
+		class:tably-last={index === virtualization.area.length - 1}
 		{...itemState?.dragging ? { 'data-svelte-tably-row': table.cssId } : {}}
 		onpointerenter={() => (hoveredRow = item)}
 		onpointerleave={() => (hoveredRow = null)}
@@ -717,7 +717,7 @@
 		{#if table.row?.snippets.context}
 			<td
 				class="context-col"
-				class:hidden={table.row?.options.context.hover && hoveredRow !== item}
+				class:tably-hidden={table.row?.options.context.hover && hoveredRow !== item}
 				data-tably-context-measure={
 					table.row?.options.context.alignHeaderToRows &&
 					index === virtualization.topIndex ?
@@ -741,26 +741,26 @@
 	{#if table.expandable && (expanded || expandableTween.current > 0 || expandableTween.transitioning)}
 		{@const expandId = getExpandId(item)}
 		{@const expandLabelId = `${expandId}-label`}
-		<tr class="expandable">
+		<tr class="tably-expandable">
 			<td
-				class="expandable-cell"
+				class="tably-expandable-cell"
 				colspan={columns.length + (table.row?.snippets.context ? 1 : 0)}
 				style="padding: 0"
 			>
-				<div class="expandable-sticky">
+				<div class="tably-expandable-sticky">
 					<div
-						class="expandable-clip"
+						class="tably-expandable-clip"
 						style="height: {Math.round(expandableTween.current)}px"
 						id={expandId}
 						role="region"
 						aria-labelledby={expandLabelId}
 						aria-hidden={!expanded}
 					>
-						<span class="sr-only" id={expandLabelId}>
+						<span class="tably-sr-only" id={expandLabelId}>
 							Expanded content for {getRowLabel(item, index)}
 						</span>
 						<div
-							class="expandable-content"
+							class="tably-expandable-content"
 							bind:offsetHeight={expandableTween.size}
 						>
 							{@render table.expandable?.snippets.content?.(item, ctx)}
@@ -775,12 +775,12 @@
 <table
 	id={table.id}
 	data-svelte-tably={table.cssId}
-	class="table svelte-tably"
+	class="tably-table svelte-tably"
 	style="--t: {virtualization.virtualTop}px; --b: {virtualization.virtualBottom}px; --scrollbar: {tbody.scrollbar}px; --viewport-width: {tbody.viewportWidth}px; --tably-context-width: {table.row?.options.context.alignHeaderToRows && contextWidth > 0 ? `${contextWidth}px` : (table.row?.options.context.width ?? 'max-content')};"
 	aria-rowcount={table.data.length}
 >
 	{#if columns.some((v) => v.snippets.header)}
-		<thead class="headers" bind:this={elements.headers}>
+		<thead class="tably-headers" bind:this={elements.headers}>
 			<tr>
 				{@render columnsSnippet(
 					(column) => column.snippets.header,
@@ -815,7 +815,7 @@
 	{/if}
 
 	<tbody
-		class="content"
+		class="tably-content"
 		use:reorderArea={{ axis: 'y', class: table.cssId }}
 		use:observeScrollbar
 		bind:this={virtualization.viewport.element}
@@ -841,11 +841,11 @@
 		{/if}
 
 		{#if columns.length > 0 && virtualization.virtualTop === 0 && virtualization.virtualBottom === 0}
-			<tr class="filler" aria-hidden="true">
+			<tr class="tably-filler" aria-hidden="true">
 				{#each fixed as column (column)}
 					{#if !hidden.includes(column)}
 						<td
-							class={`column sticky fixed ${column.options.class ?? ''}`}
+							class={`tably-column tably-sticky tably-fixed ${column.options.class ?? ''}`}
 							data-column={column.id}
 						></td>
 					{/if}
@@ -853,8 +853,8 @@
 				{#each sticky as column, i (column)}
 					{#if !hidden.includes(column)}
 						<td
-							class={`column sticky ${column.options.class ?? ''}`}
-							class:border={i == sticky.length - 1}
+							class={`tably-column tably-sticky ${column.options.class ?? ''}`}
+							class:tably-border={i == sticky.length - 1}
 							data-column={column.id}
 						></td>
 					{/if}
@@ -862,7 +862,7 @@
 				{#each scrolled as column (column)}
 					{#if !hidden.includes(column)}
 						<td
-							class={`column ${column.options.class ?? ''}`}
+							class={`tably-column ${column.options.class ?? ''}`}
 							data-column={column.id}
 						></td>
 					{/if}
@@ -875,7 +875,7 @@
 	</tbody>
 
 	{#if columns.some((v) => v.snippets.statusbar)}
-		<tfoot class="statusbar" bind:this={elements.statusbar}>
+		<tfoot class="tably-statusbar" bind:this={elements.statusbar}>
 			<tr>
 				{@render columnsSnippet(
 					(column) => column.snippets.statusbar,
@@ -895,10 +895,10 @@
 		</tfoot>
 	{/if}
 
-	<caption class="panel" style="width: {panelTween.current}px;">
+	<caption class="tably-panel" style="width: {panelTween.current}px;">
 		{#if properties.panel && properties.panel in table.panels}
 			<div
-				class="panel-content"
+				class="tably-panel-content"
 				bind:offsetWidth={panelTween.size}
 				in:fly={{ x: 100, easing: sineInOut, duration: 300 }}
 				out:fly={{ x: 100, duration: 200, easing: sineInOut }}
@@ -915,7 +915,7 @@
 		{/if}
 	</caption>
 	<caption
-		class="backdrop"
+		class="tably-backdrop"
 		aria-hidden={properties.panel && table.panels[properties.panel]?.backdrop ? false : true}
 	>
 		<button
@@ -1080,7 +1080,7 @@
 		z-index: 3;
 		padding: 0;
 		border-left: 1px solid var(--tably-border);
-		&.hidden {
+		&.tably-hidden {
 			pointer-events: none;
 			user-select: none;
 			border-left: none;
@@ -1099,7 +1099,7 @@
 		width: 100%;
 	}
 
-	.table::before {
+	.tably-table::before {
 		content: '';
 		grid-area: headers;
 		justify-self: end;
@@ -1114,7 +1114,7 @@
 		z-index: 4;
 	}
 
-	.table::after {
+	.tably-table::after {
 		content: '';
 		grid-area: statusbar;
 		justify-self: end;
@@ -1149,21 +1149,21 @@
 		border-spacing: 0;
 	}
 
-	.expandable {
+	.tably-expandable {
 		& > td {
 			padding: 0;
 			border: none;
 		}
 	}
 
-	.expandable-cell {
+	.tably-expandable-cell {
 		grid-column: 1 / -1;
 		display: block;
 		min-width: 0;
 		width: 100%;
 	}
 
-	.expandable-sticky {
+	.tably-expandable-sticky {
 		position: sticky;
 		left: 0;
 		width: var(--viewport-width, 100%);
@@ -1173,14 +1173,14 @@
 		z-index: 1;
 	}
 
-	.expandable-clip {
+	.tably-expandable-clip {
 		overflow: hidden;
 		width: 100%;
 		background-color: var(--tably-bg);
 		border-bottom: 1px solid var(--tably-border-grid);
 	}
 
-	.expandable-content {
+	.tably-expandable-content {
 		overflow: auto;
 		width: 100%;
 		background-color: var(--tably-bg);
@@ -1272,12 +1272,12 @@
 		height: var(--b);
 	}
 
-	.row:global(:is(a)) {
+	.tably-row:global(:is(a)) {
 		color: inherit;
 		text-decoration: inherit;
 	}
 
-	.backdrop {
+	.tably-backdrop {
 		position: absolute;
 		left: 0px;
 		top: 0px;
@@ -1305,17 +1305,17 @@
 		}
 	}
 
-	.sticky {
+	.tably-sticky {
 		position: sticky;
 		/* right: 100px; */
 		z-index: 1;
 	}
 
-	.sticky.border {
+	.tably-sticky.tably-border {
 		border-right: 1px solid var(--tably-border);
 	}
 
-	.headers > tr > .column {
+	.tably-headers > tr > .tably-column {
 		overflow: hidden;
 		padding: var(--tably-padding-y) 0;
 		cursor: default;
@@ -1325,16 +1325,16 @@
 			border-right: none;
 		}
 
-		&.sortable {
+		&.tably-sortable {
 			cursor: pointer;
 		}
 
-		&.resizeable {
+		&.tably-resizeable {
 			resize: horizontal;
 		}
 	}
 
-	.table {
+	.tably-table {
 		display: grid;
 		width: 100%;
 		min-width: 0;
@@ -1358,7 +1358,7 @@
 		border-radius: var(--tably-radius);
 	}
 
-	.headers {
+	.tably-headers {
 		display: flex;
 		grid-area: headers;
 		z-index: 2;
@@ -1368,19 +1368,19 @@
 		border-bottom: 1px solid var(--tably-border);
 	}
 
-	.headers > tr > .column {
+	.tably-headers > tr > .tably-column {
 		width: auto !important;
 	}
-	.headers > tr > .column:not(:first-child) {
+	.tably-headers > tr > .tably-column:not(:first-child) {
 		border-left: 1px solid var(--tably-border-grid);
 	}
 
-	.headers > tr > .context-col {
+	.tably-headers > tr > .context-col {
 		border-left: 1px solid var(--tably-border);
 		background-color: var(--tably-bg);
 	}
 
-	.content {
+	.tably-content {
 		display: flex;
 		flex-direction: column;
 		min-width: 0;
@@ -1392,17 +1392,17 @@
 		overflow-y: scroll;
 	}
 
-	.content > tr.row,
-	.content > tr.expandable {
+	.tably-content > tr.tably-row,
+	.tably-content > tr.tably-expandable {
 		flex: 0 0 auto;
 	}
 
-	.content > tr.filler {
+	.tably-content > tr.tably-filler {
 		flex: 1 0 0px;
 		min-height: 0;
 	}
 
-	.statusbar {
+	.tably-statusbar {
 		display: flex;
 		grid-area: statusbar;
 		overflow: hidden;
@@ -1411,34 +1411,34 @@
 		padding-right: var(--scrollbar, 0px);
 	}
 
-	.statusbar > tr > .column {
+	.tably-statusbar > tr > .tably-column {
 		border-top: 1px solid var(--tably-border);
 		padding: calc(var(--tably-padding-y) / 2) 0;
 	}
-	.statusbar > tr > .context-col {
+	.tably-statusbar > tr > .context-col {
 		border-top: 1px solid var(--tably-border);
 		border-left: 1px solid var(--tably-border);
 	}
 
-	.statusbar > tr > .context-col {
+	.tably-statusbar > tr > .context-col {
 		background-color: var(--tably-statusbar);
 	}
 
-	.headers > tr,
-	.row,
-	.expandable,
-	.filler,
-	.statusbar > tr {
+	.tably-headers > tr,
+	.tably-row,
+	.tably-expandable,
+	.tably-filler,
+	.tably-statusbar > tr {
 		display: grid;
 		width: 100%;
 		min-width: max-content;
 
-		& > .column {
+		& > .tably-column {
 			display: flex;
 			overflow: hidden;
 
-			&:not(.pad),
-			&.pad > :global(*:first-child) {
+			&:not(.tably-pad),
+			&.tably-pad > :global(*:first-child) {
 				padding-left: var(--tably-padding-x);
 			}
 		}
@@ -1446,54 +1446,54 @@
 		& > *:last-child:not(.context-col) {
 			width: 100%;
 
-			&:not(.pad),
-			&.pad > :global(*:first-child) {
+			&:not(.tably-pad),
+			&.tably-pad > :global(*:first-child) {
 				padding-right: var(--tably-padding-x);
 			}
 		}
 	}
 
-	.row > .column {
+	.tably-row > .tably-column {
 		background-color: var(--tably-bg);
-		&:not(.pad),
-		&.pad > :global(*:first-child) {
+		&:not(.tably-pad),
+		&.tably-pad > :global(*:first-child) {
 			padding-top: var(--tably-padding-y);
 			padding-bottom: var(--tably-padding-y);
 		}
 	}
 
-	.row > .context-col {
+	.tably-row > .context-col {
 		background-color: var(--tably-bg);
 	}
 
-	.row > .context-col.hidden {
+	.tably-row > .context-col.tably-hidden {
 		background-color: transparent;
 	}
 
-	:global(#runic-drag .row) {
+	:global(#runic-drag .tably-row) {
 		border: 1px solid var(--tably-border-grid);
 		border-top: 2px solid var(--tably-border-grid);
 	}
 
-	.headers > tr > .column:not(:first-child),
-	.row > .column:not(:first-child),
-	.filler > .column:not(:first-child),
-	.statusbar > tr > .column:not(:first-child) {
+	.tably-headers > tr > .tably-column:not(:first-child),
+	.tably-row > .tably-column:not(:first-child),
+	.tably-filler > .tably-column:not(:first-child),
+	.tably-statusbar > tr > .tably-column:not(:first-child) {
 		border-left: 1px solid var(--tably-border-grid);
 	}
 
-	.row,
-	.filler {
+	.tably-row,
+	.tably-filler {
 		border-bottom: 1px solid var(--tably-border-grid);
 	}
 
-	.filler {
+	.tably-filler {
 		pointer-events: none;
 		user-select: none;
 		background: none;
 	}
 
-	.sr-only {
+	.tably-sr-only {
 		position: absolute;
 		width: 1px;
 		height: 1px;
@@ -1505,7 +1505,7 @@
 		border: 0;
 	}
 
-	.panel {
+	.tably-panel {
 		position: relative;
 		grid-area: panel;
 		height: 100%;
@@ -1514,7 +1514,7 @@
 
 		z-index: 4;
 
-		> .panel-content {
+		> .tably-panel-content {
 			position: absolute;
 			top: 0;
 			right: 0;
