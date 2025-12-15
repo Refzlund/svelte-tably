@@ -56,6 +56,8 @@ type SelectOptions<T extends any> = {
 
 export type TableProps<T extends any> = {
 	id?: string
+	/** Class name for the table element */
+	class?: string
 	/** Bindable to TableState; `bind:table` */
 	table?: TableState<T> 
 	data: T[]

@@ -1,7 +1,7 @@
 import { TableState, type RowCtx } from '../table/table-state.svelte.js'
 import type { Snippet } from 'svelte'
 
-type ContextOptions<T> = {
+type ContextOptions<_T> = {
 	/**
 	 * Only show the context *content* when hovering the row?
 	 *
@@ -22,9 +22,13 @@ type ContextOptions<T> = {
 	 * @default false
 	 */
 	alignHeaderToRows?: boolean
+	/** Class name for the context column element */
+	class?: string
 }
 
 export interface RowProps<T> {
+	/** Class name for the row element */
+	class?: string
 	/**
 	 * A sticky context column on the right of each table
 	*/
@@ -51,7 +55,9 @@ export class RowState<T> {
 	})
 
 	options = $derived({
+		class: this.#props.class,
 		context: {
+			class: this.#props.contextOptions?.class,
 			hover: this.#props.contextOptions?.hover ?? true,
 			width: this.#props.contextOptions?.width ?? 'max-content',
 			alignHeaderToRows: this.#props.contextOptions?.alignHeaderToRows ?? false

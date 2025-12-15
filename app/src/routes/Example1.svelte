@@ -31,7 +31,12 @@
 	}
 
 	type T = ReturnType<typeof createData>[number]
-	let data = $state(createData(500))
+	type Person = {
+		name: string
+		age: number
+		email: string
+	}
+	let data = $state(createData(500)) as Person[]
 
 	let panel = $state() as undefined | string
 
