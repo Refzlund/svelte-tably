@@ -1,7 +1,12 @@
-import { TableState, type RowCtx } from '../table/table-state.svelte.js'
 import type { Snippet } from 'svelte'
+import { getTableContext, type RowCtx } from '../table/table-state.svelte.js'
 
-type ContextOptions<_T> = {
+// Minimal interface for what Row needs from Table
+export interface RowTableRef {
+	row: RowInstance | undefined
+}
+
+type ContextOptions = {
 	/**
 	 * Only show the context *content* when hovering the row?
 	 *
@@ -26,53 +31,75 @@ type ContextOptions<_T> = {
 	class?: string
 }
 
-export interface RowProps<T> {
-	/** Class name for the row element */
-	class?: string
-	/**
-	 * A sticky context column on the right of each table
-	*/
-	context?: Snippet<[item: T, ctx: RowCtx<T>]>
-	contextOptions?: ContextOptions<T>
-	contextHeader?: Snippet
+export const RowState = <T>() => $origin({
+	props: $attrs({
+		/** Class name for the row element */
+		class: undefined as string | undefined,
+		/**
+		 * A sticky context column on the right of each table
+		*/
+		context: undefined as Snippet<[item: T, ctx: RowCtx<T>]> | undefined,
+		contextOptions: undefined as ContextOptions | undefined,
+		contextHeader: undefined as Snippet | undefined,
 
-	onclick?: (event: MouseEvent, ctx: RowCtx<T>) => void
-	oncontextmenu?: (event: MouseEvent, ctx: RowCtx<T>) => void
-}
+		onclick: undefined as ((event: MouseEvent, ctx: RowCtx<T>) => void) | undefined,
+		oncontextmenu: undefined as ((event: MouseEvent, ctx: RowCtx<T>) => void) | undefined,
 
-export class RowState<T> {
-	#table: TableState<T>
-	#props = {} as RowProps<T>
+		/** @internal */
+		_table: undefined as RowTableRef | undefined
+	}),
 
-	snippets = $derived({
-		context: this.#props.context,
-		contextHeader: this.#props.contextHeader
-	})
+	/** Stored cleanup function */
+	_cleanup: undefined as (() => void) | undefined,
 
-	events = $derived({
-		onclick: this.#props.onclick,
-		oncontextmenu: this.#props.oncontextmenu
-	})
-
-	options = $derived({
-		class: this.#props.class,
-		context: {
-			class: this.#props.contextOptions?.class,
-			hover: this.#props.contextOptions?.hover ?? true,
-			width: this.#props.contextOptions?.width ?? 'max-content',
-			alignHeaderToRows: this.#props.contextOptions?.alignHeaderToRows ?? false
+	/** Call to remove this row config from the table */
+	cleanup() {
+		if (typeof this._cleanup === 'function') {
+			this._cleanup()
+			this._cleanup = undefined
 		}
-	})
+	},
 
-	constructor(props: RowProps<T>) {
-		this.#props = props
-		this.#table = TableState.getContext<T>()!
-		if (!this.#table) {
-			throw new Error('svelte-tably: Row must be associated with a Table')
-		}
+	get snippets() {
+		return $derived({
+			context: this.props.context,
+			contextHeader: this.props.contextHeader
+		})
+	},
 
-		this.#table.row = this
-		$effect(() => () => this.#table.row === this && (this.#table.row = undefined))
+	get events() {
+		return $derived({
+			onclick: this.props.onclick,
+			oncontextmenu: this.props.oncontextmenu
+		})
+	},
+
+	get options() {
+		return $derived({
+			class: this.props.class,
+			context: {
+				class: this.props.contextOptions?.class,
+				hover: this.props.contextOptions?.hover ?? true,
+				width: this.props.contextOptions?.width ?? 'max-content',
+				alignHeaderToRows: this.props.contextOptions?.alignHeaderToRows ?? false
+			}
+		})
 	}
-}
+}, function() {
+	// Get table from context or from props (for programmatic usage)
+	const table = this.props._table ?? getTableContext<T>()
+	if (!table) {
+		throw new Error('svelte-tably: Row must be associated with a Table')
+	}
+
+	table.row = this as RowInstance
+	this._cleanup = () => {
+		if (table.row === this) {
+			table.row = undefined
+		}
+	}
+})
+
+export type RowInstance = ReturnType<ReturnType<typeof RowState>>
+export type RowProps<T = unknown> = $attrs.Of<ReturnType<typeof RowState<T>>>
 

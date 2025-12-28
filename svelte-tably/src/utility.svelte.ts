@@ -4,40 +4,40 @@ export type Simplify<T> = T extends infer V ? {
 	[K in keyof V]: V[K]
 } : never
 
-export type AnyRecord = Record<PropertyKey, any>
+export type AnyRecord = Record<PropertyKey, unknown>
 
-export function pick<T extends Record<PropertyKey, any>, K extends (keyof T)[]>(item: T, keys: K) {
+export function pick<T extends Record<PropertyKey, unknown>, K extends (keyof T)[]>(item: T, keys: K) {
 	return keys.reduce(
 		(acc, key) => ({ ...acc, [key]: item[key] }), {}
 	) as Simplify<Pick<T, K[number]>>
 }
 
-export function boundPick<T extends Record<PropertyKey, any>, K extends (keyof T)[]>(item: T, keys: K) {
+export function boundPick<T extends Record<PropertyKey, unknown>, K extends (keyof T)[]>(item: T, keys: K) {
 	const obj = {} as SetterRecord
 	for (const key of keys) {
-		obj[key] = [() => item[key], (v: any) => item[key] = v]
+		obj[key] = [() => item[key], (v: unknown) => { (item as Record<PropertyKey, unknown>)[key] = v }]
 	}
 	return Object.defineProperties({}, withSetters(obj))
 }
 
-export function assign(item: Record<PropertyKey, any>, props: Partial<Record<PropertyKey, any>> = {}) {
+export function assign(item: Record<PropertyKey, unknown>, props: Partial<Record<PropertyKey, unknown>> = {}) {
 	for(const key in props) {
 		const value = props[key]
 		if (value === undefined) continue
 		if (typeof value === 'object') {
-			assign(item[key], value)
+			assign(item[key] as Record<PropertyKey, unknown>, value as Record<PropertyKey, unknown>)
 			continue
 		}
 		item[key] = value
 	}
 }
 
-export function boundAssign(item: Record<PropertyKey, any>, props: Partial<Record<PropertyKey, any>> = {}) {
+export function boundAssign(item: Record<PropertyKey, unknown>, props: Partial<Record<PropertyKey, unknown>> = {}) {
 	for(const key in props) {
 		const value = props[key]
 		if (value === undefined) continue
 		if (typeof value === 'object') {
-			boundAssign(item[key], value)
+			boundAssign(item[key] as Record<PropertyKey, unknown>, value as Record<PropertyKey, unknown>)
 			continue
 		}
 
@@ -57,16 +57,16 @@ export function mounted() {
 }
 
 export function getters<T extends AnyRecord>(obj: T) {
-	let items = {} as AnyRecord
+	let items = {} as Record<PropertyKey, PropertyDescriptor>
 	for (const key in obj) {
 		items[key] = { get: () => obj[key] }
 	}
 	return items as { readonly [K in keyof T]: T[K] }
 }
 
-type SetterRecord = Record<PropertyKey, [() => any, (v: any) => void]>
+type SetterRecord = Record<PropertyKey, [() => unknown, (v: unknown) => void]>
 export function withSetters<T extends SetterRecord>(obj: T) {
-	let items = {} as AnyRecord
+	let items = {} as Record<PropertyKey, PropertyDescriptor>
 	for (const key in obj) {
 		items[key] = {
 			get: () => obj[key][0](),
@@ -86,16 +86,16 @@ export function fromProps<T extends AnyRecord, B extends SetterRecord>(props: T,
 	>
 }
 
-export function assignDescriptors<T extends AnyRecord, B extends AnyRecord>(target: T, source: B): T & B {
+export function assignDescriptors<T extends object, B extends object>(target: T, source: B): T & B {
 	for (const key of Object.keys(source)) {
 		const descriptor = Object.getOwnPropertyDescriptor(source, key)
 		if (descriptor) {
 			Object.defineProperty(target, key, descriptor)
 		} else {
-			target[key as keyof T] = source[key] // Copy regular values if descriptor is missing
+			(target as Record<PropertyKey, unknown>)[key] = (source as Record<PropertyKey, unknown>)[key] // Copy regular values if descriptor is missing
 		}
 	}
-	return target
+	return target as T & B
 }
 
 /** Capitalize by space */

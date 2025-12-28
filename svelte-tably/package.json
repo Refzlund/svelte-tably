@@ -14,7 +14,7 @@
 		"directory": "_package"
 	},
 	"scripts": {
-		"package": "bunx repo-pack"
+		"package": "bunx repo-pack && svelte-origin ./_package"
 	},
 	"files": [
 		"dist"
@@ -27,7 +27,7 @@
 		"runic-reorder": "^1"
 	},
 	"peerDependencies": {
-		"svelte": "^5"
+		"svelte": "^5.46.1"
 	},
 	"devDependencies": {
 		"@sveltejs/package": "^2",

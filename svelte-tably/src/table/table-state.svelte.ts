@@ -1,13 +1,13 @@
-import { getContext, setContext, type Snippet } from 'svelte'
-import { ColumnState, type RowColumnCtx } from '../column/column-state.svelte.js'
-import { PanelState } from '../panel/panel-state.svelte.js'
-import { Data } from './data.svelte.js'
-import type { ExpandableState } from '../expandable/expandable-state.svelte.js'
+import { getContext, setContext, untrack, type Snippet } from 'svelte'
+import type { ColumnInstance, RowColumnCtx } from '../column/column-state.svelte.js'
+import { Data, type DataInstance } from './data.svelte.js'
 import type { ItemState } from 'runic-reorder'
-import type { RowState } from '../row/row-state.svelte.js'
 import type { CSVOptions } from './csv.js'
+import type { PanelInstance } from '../panel/panel-state.svelte.js'
+import type { ExpandableInstance } from '../expandable/expandable-state.svelte.js'
+import type { RowInstance } from '../row/row-state.svelte.js'
 
-export type HeaderSelectCtx<T = any> = {
+export type HeaderSelectCtx<T = unknown> = {
 	isSelected: boolean
 	/** The list of selected items */
 	readonly selected: T[]
@@ -17,14 +17,14 @@ export type HeaderSelectCtx<T = any> = {
 	readonly indeterminate: boolean
 }
 
-export type RowSelectCtx<T extends any = any> = {
+export type RowSelectCtx<T = unknown> = {
 	readonly item: T
 	readonly row: RowColumnCtx<T, unknown>
 	data: T[]
 	isSelected: boolean
 }
 
-export interface RowCtx<T extends any> {
+export interface RowCtx<T> {
 	readonly rowHovered: boolean
 	readonly index: number
 	readonly itemState: ItemState<T> | undefined
@@ -32,19 +32,19 @@ export interface RowCtx<T extends any> {
 	expanded: boolean
 }
 
-type SelectOptions<T extends any> = {
+type SelectOptions<T> = {
 	/**
 	 * The style, in which the selection is shown
 	 *
-	 * NOTE: If using `edge` | 'side', "show" will always be `hover`. This is due to
+	 * NOTE: If using ``edge`` | ''side'', "show" will always be ``hover``. This is due to
 	 * an inconsistency/limitation of matching the scroll between the selection div and the rows.
 	 *
-	 * @default 'column'
+	 * @default ''column''
 	 */
 	style?: 'column'
 	/**
 	 * When to show the row-select, when not selected?
-	 * @default 'hover'
+	 * @default ''hover''
 	 */
 	show?: 'hover' | 'always' | 'never'
 	/**
@@ -54,103 +54,194 @@ type SelectOptions<T extends any> = {
 	rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
 }
 
-export type TableProps<T extends any> = {
-	id?: string
-	/** Class name for the table element */
-	class?: string
-	/** Bindable to TableState; `bind:table` */
-	table?: TableState<T> 
-	data: T[]
-	selected?: T[]
-	/** Current visible panel */
-	panel?: string
-	filters?: ((item: T) => boolean)[]
-	/**
-	 * **For a reorderable table, the data is mutated when reordered.**
-	 * 
-	 * Reorderable tables cannot
-	 * - Be filtered
-	 * - Be sorted
-	 * @default false
-	*/
-	reorderable?: boolean
-	/** Whether columns in this table can be resized */
-	resizeable?: boolean
-	/** Whether to enable selection */
-	select?: boolean | SelectOptions<T>
-	/** Create missing columns automatically. */
-	auto?: boolean
-}
+export const TableState = <T>() => $origin({
+	props: $attrs({
+		id: undefined as string | undefined,
+		/** Class name for the table element */
+		class: undefined as string | undefined,
+		data: [] as T[],
+		selected: $bindable([]) as T[],
+		/** Current visible panel */
+		panel: $bindable(undefined) as string | undefined,
+		filters: undefined as ((item: T) => boolean)[] | undefined,
+		/**
+		 * **For a reorderable table, the data is mutated when reordered.**
+		 * 
+		 * Reorderable tables cannot
+		 * - Be filtered
+		 * - Be sorted
+		 * @default false
+		 */
+		reorderable: false as boolean,
+		/** Whether columns in this table can be resized */
+		resizeable: true as boolean,
+		/** Whether to enable selection */
+		select: false as boolean | SelectOptions<T>,
+		/** Create missing columns automatically. */
+		auto: false as boolean,
+		/** Content snippet for rendering Column/Panel/Expandable/Row components */
+		content: undefined as Snippet<[context: unknown]> | undefined
+	}),
 
-export class TableState<T> {
-	#props = {} as TableProps<T>
-
-	id = $state() as string | undefined
-	cssId = $state() as string
-
-	dataState: Data<T> = $state({} as Data<T>)
-
-	data = $derived(
-		this.dataState.current ?? []
-	)
-
-	columns = $state({}) as Record<string, ColumnState<T, any>>
-	panels = $state({}) as Record<string, PanelState<T>>
-	expandable = $state() as undefined | ExpandableState<T>
-	row = $state() as undefined | RowState<T>
-
-	/** Currently selected items */
-	get selected(): T[] { return this.#props.selected ??= [] }
-	set selected(items: T[]) { this.#props.selected = items }
-
-	/** Saved positions */
-	#positions: {
+	_cssId: $state(''),
+	_dataState: $state<DataInstance | undefined>(undefined),
+	_columns: $state<Record<string, ColumnInstance>>({}),
+	_panels: $state<Record<string, PanelInstance>>({}),
+	_expandable: $state<ExpandableInstance | undefined>(undefined),
+	_row: $state<RowInstance | undefined>(undefined),
+	_columnWidths: $state<Record<string, number>>({}),
+	_positions: $state<{
 		fixed: string[]
 		sticky: string[]
 		hidden: string[]
 		scroll: string[]
-	} = $state({
+	}>({
 		fixed: [],
 		sticky: [],
 		hidden: [],
 		scroll: []
-	})
-	/** Column positions based on column ids */
-	positions = $state({
-		fixed: [] as ColumnState<T, any>[],
-		sticky: [] as ColumnState<T, any>[],
-		scroll: [] as ColumnState<T, any>[],
-		hidden: [] as ColumnState<T, any>[]
-	})
+	}),
+	_positionsState: $state<{
+		fixed: ColumnInstance[]
+		sticky: ColumnInstance[]
+		scroll: ColumnInstance[]
+		hidden: ColumnInstance[]
+	}>({
+		fixed: [],
+		sticky: [],
+		scroll: [],
+		hidden: []
+	}),
+	/**
+	 * Tracks the order in which columns are first declared/registered.
+	 * Used as fallback for positioning when no saved order exists in localStorage.
+	 */
+	_declarationOrder: $state<string[]>([]),
 
-	/** Primarily externally managed options */
-	options = $derived({
-		panel: this.#props.panel,
-		filters: this.#props.reorderable ? false : (this.#props.filters ?? []),
-		resizeable: this.#props.resizeable ?? true,
-		reorderable: this.#props.reorderable ?? false,
-		select: this.#props.select ?? false,
-		auto: this.#props.auto ?? false
-	})
+	get id() {
+		return this.props!.id
+	},
 
-	add(state: ColumnState<T, any> | PanelState<T>) {
-		if (state instanceof ColumnState) {
-			const key = state.id
-			this.columns[key] = state
+	get cssId() {
+		return this._cssId
+	},
 
-			const insertBySavedOrder = (
-				arr: ColumnState<T, any>[],
-				item: ColumnState<T, any>,
+	get dataState() {
+		return this._dataState!
+	},
+
+	set dataState(value: DataInstance) {
+		this._dataState = value
+	},
+
+	get data() {
+		return $derived(this._dataState?.current ?? [])
+	},
+
+	get columns() {
+		return this._columns
+	},
+
+	set columns(value: Record<string, ColumnInstance>) {
+		this._columns = value
+	},
+
+	get panels() {
+		return this._panels
+	},
+
+	set panels(value: Record<string, PanelInstance>) {
+		this._panels = value
+	},
+
+	get expandable() {
+		return this._expandable
+	},
+
+	set expandable(value: ExpandableInstance | undefined) {
+		this._expandable = value
+	},
+
+	get row() {
+		return this._row
+	},
+
+	set row(value: RowInstance | undefined) {
+		this._row = value
+	},
+
+	get selected() {
+		return this.props!.selected
+	},
+
+	set selected(items: T[]) {
+		this.props!.selected = items
+	},
+
+	get positions() {
+		return this._positionsState
+	},
+
+	set positions(value: typeof this._positionsState) {
+		this._positionsState = value
+	},
+
+	get columnWidths() {
+		return this._columnWidths
+	},
+
+	set columnWidths(value: Record<string, number>) {
+		this._columnWidths = value
+	},
+
+	get options() {
+		return $derived({
+			panel: this.props!.panel,
+			filters: this.props!.reorderable ? false : (this.props!.filters ?? []),
+			resizeable: this.props!.resizeable ?? true,
+			reorderable: this.props!.reorderable ?? false,
+			select: this.props!.select ?? false,
+			auto: this.props!.auto ?? false
+		})
+	},
+
+	add(state: ColumnInstance | PanelInstance) {
+		// Check if it's a ColumnInstance by looking for column-specific properties
+		if ('defaults' in state && 'snippets' in state && 'options' in state && 'toggleVisiblity' in state) {
+			const column = state as ColumnInstance
+			const key = column.id
+			this._columns[key] = column
+
+			// Track declaration order for columns that haven't been seen before
+			if (!this._declarationOrder.includes(key)) {
+				this._declarationOrder.push(key)
+			}
+
+			/**
+			 * Insert a column into an array at the correct position based on order.
+			 * Priority: savedOrder (localStorage) > declarationOrder > append
+			 */
+			const insertByOrder = (
+				arr: ColumnInstance[],
+				item: ColumnInstance,
 				savedOrder: string[]
 			) => {
-				const idx = savedOrder.indexOf(item.id)
+				// First check if there's a saved position from localStorage
+				const savedIdx = savedOrder.indexOf(item.id)
+				// Fall back to declaration order if no saved position
+				const orderToUse = savedIdx !== -1 ? savedOrder : this._declarationOrder
+				const idx = orderToUse.indexOf(item.id)
+
 				if (idx === -1) {
+					// No known position, append at end
 					arr.push(item)
 					return
 				}
+
+				// Find where to insert based on the order
 				let i = 0
 				for (; i < arr.length; i++) {
-					const otherIdx = savedOrder.indexOf(arr[i].id)
+					const otherIdx = orderToUse.indexOf(arr[i].id)
 					if (otherIdx === -1) continue
 					if (otherIdx > idx) break
 				}
@@ -158,205 +249,199 @@ export class TableState<T> {
 			}
 
 			const clean = () => {
-				delete this.columns[key]
-				this.positions.fixed = this.positions.fixed.filter((column) => column !== state)
-				this.positions.sticky = this.positions.sticky.filter((column) => column !== state)
-				this.positions.scroll = this.positions.scroll.filter((column) => column !== state)
-				this.positions.hidden = this.positions.hidden.filter((column) => column !== state)
+				delete this._columns[key]
+				// Use id comparison instead of reference equality to avoid Svelte 5 proxy issues
+				this._positionsState.fixed = this._positionsState.fixed.filter((c) => c.id !== key)
+				this._positionsState.sticky = this._positionsState.sticky.filter((c) => c.id !== key)
+				this._positionsState.scroll = this._positionsState.scroll.filter((c) => c.id !== key)
+				this._positionsState.hidden = this._positionsState.hidden.filter((c) => c.id !== key)
 			}
 
-			if (state.defaults.sortby && !this.dataState.sortby) {
-				this.dataState.sortBy(key)
+			if (column.defaults.sortby && this._dataState && !this._dataState.sortby) {
+				this._dataState.sortBy(key)
 			}
 
 			const saved = {
-				fixed: this.#positions.fixed.includes(key),
-				sticky: this.#positions.sticky.includes(key),
-				hidden: this.#positions.hidden.includes(key),
-				scroll: this.#positions.scroll.includes(key)
+				fixed: this._positions.fixed.includes(key),
+				sticky: this._positions.sticky.includes(key),
+				hidden: this._positions.hidden.includes(key),
+				scroll: this._positions.scroll.includes(key)
 			}
 			const isSaved = Object.values(saved).some(v => v)
 
 			if (
-				(!isSaved && state.options.fixed)
+				(!isSaved && column.options.fixed)
 				|| saved.fixed
 			) {
-				insertBySavedOrder(this.positions.fixed, state, this.#positions.fixed)
+				insertByOrder(this._positionsState.fixed, column, this._positions.fixed)
 				return clean
 			}
 
 			if (
-				(!isSaved && state.defaults.show === false)
+				(!isSaved && column.defaults.show === false)
 				|| saved.hidden
 			) {
-				insertBySavedOrder(this.positions.hidden, state, this.#positions.hidden)
+				insertByOrder(this._positionsState.hidden, column, this._positions.hidden)
 			}
 
 			if (
-				(!isSaved && state.defaults.sticky)
+				(!isSaved && column.defaults.sticky)
 				|| saved.sticky
 			) {
-				insertBySavedOrder(this.positions.sticky, state, this.#positions.sticky)
-			}
-			else {
-				insertBySavedOrder(this.positions.scroll, state, this.#positions.scroll)
+				insertByOrder(this._positionsState.sticky, column, this._positions.sticky)
+			} else {
+				insertByOrder(this._positionsState.scroll, column, this._positions.scroll)
 			}
 
 			return clean
 		}
 
-		if (state instanceof PanelState) {
-			const key = state.id
-			this.panels[key] = state
-			return () => delete this.panels[key]
+		// Otherwise it's a PanelInstance
+		if ('backdrop' in state && 'children' in state) {
+			const panel = state as PanelInstance
+			const key = panel.id
+			this._panels[key] = panel
+			return () => delete this._panels[key]
 		}
-	}
+	},
 
-	static getContext<T>() {
-		return getContext('svelte-tably') as TableState<T> | undefined
-	}
-
-	/** Width of each column */
-	columnWidths = $state({}) as Record<string, number>
-
-	#storageKey() {
-		if (!this.id) return null
-		return `svelte-tably:${this.id}`
-	}
-
-	#getStorage(): Storage | null {
-		try {
-			return localStorage
-		} catch {
-			return null
-		}
-	}
-
-	#save() {
-		const key = this.#storageKey()
-		if (!key) return
-
-		const content = {
-			columnWidths: this.columnWidths,
-			positions: {
-				fixed: this.positions.fixed.map(c => c.id),
-				sticky: this.positions.sticky.map(c => c.id),
-				hidden: this.positions.hidden.map(c => c.id),
-				scroll: this.positions.scroll.map(c => c.id)
-			},
-			sortby: this.dataState.sortby,
-			sortReverse: this.dataState.sortReverse
-		}
-
-		const storage = this.#getStorage()
-		if (!storage) return
-
-		try {
-			storage.setItem(key, JSON.stringify(content))
-		} catch {
-			return
-		}
-	}
-
-	#saving = false
-	#saveTimeout: ReturnType<typeof setTimeout> | null = null
-	#scheduleSave(): void {
-		if(this.#saving) return
-		if(!this.#storageKey()) return
-		if(!this.#getStorage()) return
-		this.#saving = true
-		if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
-		this.#saveTimeout = setTimeout(() => {
-			this.#saving = false
-			this.#save()
-		}, 1000)
-	}
-
-	#load(): {
-		columnWidths: Record<string, number>
-		positions: {
-			fixed: string[]
-			sticky: string[]
-			hidden: string[]
-			scroll: string[]
-		}
-		sortby: string | undefined
-		sortReverse: boolean
-	} | null {
-		const key = this.#storageKey()
-		if (!key) return null
-
-		const storage = this.#getStorage()
-		if (!storage) return null
-
-		let raw: string | null = null
-		try {
-			raw = storage.getItem(key)
-		} catch {
-			return null
-		}
-
-		let item: any
-		try {
-			item = JSON.parse(raw || '{}')
-		} catch {
-			return null
-		}
-		if (!item || typeof item !== 'object') item = {}
-		item.columnWidths ??= {}
-		item.positions ??= {}
-		item.positions.fixed ??= []
-		item.positions.sticky ??= []
-		item.positions.hidden ??= []
-		item.positions.scroll ??= []
-		item.sortby ??= undefined
-		item.sortReverse ??= false
-		return item
-	}
-
-	async toCSV(options: CSVOptions<T> = {}): Promise<string> {
-		options
+	async toCSV(_options: CSVOptions<T> = {}): Promise<string> {
 		return ''
 	}
+}, function() {
+	this._cssId = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
 
-	constructor(tableProps: TableProps<T>) {
-		this.#props = tableProps
-		this.id = tableProps.id
-		this.cssId = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
-		this.dataState = new Data(this, tableProps)
+	// Create data state
+	const dataState = Data<T>()({
+		_table: this,
+		_data: this.props.data,
+		_filters: this.props.filters,
+		_reorderable: this.props.reorderable
+	})
+	this._dataState = dataState
 
-		if(this.id) {
-			// fetch from localstorage
-			const saved = this.#load()
-			if(saved) {
-				this.columnWidths = saved.columnWidths
-				this.#positions = saved.positions
-				this.dataState.sortby = saved.sortby
-				this.dataState.sortReverse = saved.sortReverse
-			}
-		}
-		
-		$effect(() => {
-			if (typeof window === 'undefined') return
-			const handler = () => this.#save()
-			window.addEventListener('beforeunload', handler)
-			return () => window.removeEventListener('beforeunload', handler)
-		})
-		$effect(() => {
-			return () => {
-				if (this.#saveTimeout) clearTimeout(this.#saveTimeout)
-				this.#saveTimeout = null
-			}
-		})
-		$effect(() => {
-			Object.keys(this.columnWidths)
-			// Track order changes by observing the id sequences
-			Object.values(this.positions).map(arr => arr.map(c => c.id).join('|'))
-			this.dataState.sortby
-			this.dataState.sortReverse
-			this.#scheduleSave()
-		})
-
-		setContext('svelte-tably', this)
+	// LocalStorage persistence (browser-only to avoid SSR hydration mismatch)
+	type SavedPositions = {
+		fixed: string[]
+		sticky: string[]
+		hidden: string[]
+		scroll: string[]
 	}
+	type SavedState = {
+		positions?: SavedPositions
+		columnWidths?: Record<string, number>
+	}
+	const storageKey = this.props.id ? `svelte-tably:${this.props.id}` : null
+
+	// Load saved state from localStorage (runs once on init, synchronously)
+	if (storageKey && typeof window !== 'undefined') {
+		try {
+			const saved = localStorage.getItem(storageKey)
+			if (saved) {
+				const parsed = JSON.parse(saved) as SavedState
+				if (parsed.positions) {
+					this._positions = parsed.positions
+				}
+				if (parsed.columnWidths) {
+					this._columnWidths = parsed.columnWidths
+				}
+			}
+		} catch {
+			// Ignore parse errors
+		}
+	}
+
+	// Save state on changes to localStorage
+	$effect(() => {
+		// Tracked: position arrays and column widths
+		const currentIds = {
+			fixed: this._positionsState.fixed.map(c => c.id),
+			sticky: this._positionsState.sticky.map(c => c.id),
+			hidden: this._positionsState.hidden.map(c => c.id),
+			scroll: this._positionsState.scroll.map(c => c.id)
+		}
+		const widths = { ...this._columnWidths }
+
+		untrack(() => {
+			if (!storageKey) return
+			if (typeof window === 'undefined') return
+
+			localStorage.setItem(storageKey, JSON.stringify({
+				positions: currentIds,
+				columnWidths: widths
+			}))
+		})
+	})
+
+	setContext('svelte-tably', this)
+})
+
+export function getTableContext<_T>() {
+	return getContext('svelte-tably') as TableInstance<_T> | undefined
 }
+
+// Internal column reference type for TableInstance to avoid circular dependency
+interface TableColumnRef {
+	readonly id: string
+	readonly options: {
+		sort: boolean | ((a: unknown, b: unknown) => number)
+		value: ((item: unknown) => unknown) | undefined
+		filter: ((value: unknown) => boolean) | undefined
+		fixed: boolean
+		resizeable: boolean
+		style: string | undefined
+		class: string | undefined
+		onclick: ((event: MouseEvent, ctx: unknown) => void) | undefined
+		padRow: boolean
+		padHeader: boolean
+		padStatusbar: boolean
+	}
+	readonly defaults: {
+		readonly sticky: boolean
+		readonly show: boolean
+		readonly sortby: boolean
+		readonly width: number
+	}
+	readonly snippets: {
+		readonly title: Snippet | undefined
+		readonly header: Snippet<[ctx: unknown]> | undefined
+		readonly row: Snippet<[item: unknown, ctx: unknown]> | undefined
+		readonly statusbar: Snippet<[ctx: unknown]> | undefined
+	}
+	toggleVisiblity(): void
+}
+
+/** 
+ * TableInstance interface - defined explicitly to avoid circular ReturnType issues.
+ * Note: Generic T is optional since TypeScript's ReturnType loses generics.
+ */
+export interface TableInstance<T = unknown> {
+	readonly id: string | undefined
+	readonly cssId: string
+	dataState: DataInstance<T>
+	readonly data: T[]
+	columns: Record<string, TableColumnRef>
+	panels: Record<string, PanelInstance>
+	expandable: ExpandableInstance | undefined
+	row: RowInstance | undefined
+	selected: T[]
+	positions: {
+		fixed: TableColumnRef[]
+		sticky: TableColumnRef[]
+		scroll: TableColumnRef[]
+		hidden: TableColumnRef[]
+	}
+	columnWidths: Record<string, number>
+	readonly options: {
+		panel: string | undefined
+		filters: ((item: T) => boolean)[] | false
+		resizeable: boolean
+		reorderable: boolean
+		select: boolean | SelectOptions<T>
+		auto: boolean
+	}
+	add(state: TableColumnRef | PanelInstance): (() => void) | undefined
+	toCSV(options?: CSVOptions<T>): Promise<string>
+}
+
+export type TableProps<T = unknown> = $attrs.Of<ReturnType<typeof TableState<T>>>
