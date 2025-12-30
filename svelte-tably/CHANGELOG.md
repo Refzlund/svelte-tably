@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.5.1
+
+### Patch Changes
+
+- fix: reactivity issues in _very_ rare cases ([#30](https://github.com/Refzlund/svelte-tably/pull/30))
+
 ## 1.5.0
 
 ### Minor Changes
