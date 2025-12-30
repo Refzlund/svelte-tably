@@ -17,7 +17,8 @@
 		"package": "bunx repo-pack && svelte-origin ./_package"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"__svelte-origin-runtime.js"
 	],
 	"type": "module",
 	"exports": {
