@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.5.2
+
+### Patch Changes
+
+- hotfix: include runtime file ([`2859d72`](https://github.com/Refzlund/svelte-tably/commit/2859d7296f0aeb06a623dda7f75a8061365907f5))
+
 ## 1.5.1
 
 ### Patch Changes
