@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.5.3
+
+### Patch Changes
+
+- chore: bump `svelte-origin` ([`a5d179a`](https://github.com/Refzlund/svelte-tably/commit/a5d179ac07a1bfa5ba80b43b6ddfcecf02a3e5e4))
+
 ## 1.5.2
 
 ### Patch Changes
