@@ -251,10 +251,11 @@ export const TableState = <T>() => $origin({
 			const clean = () => {
 				delete this._columns[key]
 				// Use id comparison instead of reference equality to avoid Svelte 5 proxy issues
-				this._positionsState.fixed = this._positionsState.fixed.filter((c) => c.id !== key)
-				this._positionsState.sticky = this._positionsState.sticky.filter((c) => c.id !== key)
-				this._positionsState.scroll = this._positionsState.scroll.filter((c) => c.id !== key)
-				this._positionsState.hidden = this._positionsState.hidden.filter((c) => c.id !== key)
+				// Filter Boolean first to guard against any undefined entries
+				this._positionsState.fixed = this._positionsState.fixed.filter((c) => c && c.id !== key)
+				this._positionsState.sticky = this._positionsState.sticky.filter((c) => c && c.id !== key)
+				this._positionsState.scroll = this._positionsState.scroll.filter((c) => c && c.id !== key)
+				this._positionsState.hidden = this._positionsState.hidden.filter((c) => c && c.id !== key)
 			}
 
 			if (column.defaults.sortby && this._dataState && !this._dataState.sortby) {
@@ -269,6 +270,9 @@ export const TableState = <T>() => $origin({
 			}
 			const isSaved = Object.values(saved).some(v => v)
 
+			// Determine which position array to add the column to
+			// Priority: fixed > hidden > sticky > scroll
+			// A column should only be in ONE position array at a time
 			if (
 				(!isSaved && column.options.fixed)
 				|| saved.fixed
@@ -282,6 +286,7 @@ export const TableState = <T>() => $origin({
 				|| saved.hidden
 			) {
 				insertByOrder(this._positionsState.hidden, column, this._positions.hidden)
+				return clean
 			}
 
 			if (
@@ -354,11 +359,12 @@ export const TableState = <T>() => $origin({
 	// Save state on changes to localStorage
 	$effect(() => {
 		// Tracked: position arrays and column widths
+		// Filter out undefined entries (defensive - shouldn't happen but prevents runtime errors)
 		const currentIds = {
-			fixed: this._positionsState.fixed.map(c => c.id),
-			sticky: this._positionsState.sticky.map(c => c.id),
-			hidden: this._positionsState.hidden.map(c => c.id),
-			scroll: this._positionsState.scroll.map(c => c.id)
+			fixed: this._positionsState.fixed.filter(Boolean).map(c => c.id),
+			sticky: this._positionsState.sticky.filter(Boolean).map(c => c.id),
+			hidden: this._positionsState.hidden.filter(Boolean).map(c => c.id),
+			scroll: this._positionsState.scroll.filter(Boolean).map(c => c.id)
 		}
 		const widths = { ...this._columnWidths }
 

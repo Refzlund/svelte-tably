@@ -70,6 +70,7 @@ Svelte 5 uses proxies for `$state` objects. When comparing state objects:
 - Use `c.id !== key` instead of `c !== state` for equality checks.
 - Direct reference comparison with proxies causes `state_proxy_equality_mismatch` warnings.
 - This is especially important in cleanup functions that filter arrays.
+- When filtering arrays that may contain undefined entries, use `c && c.id !== key` as a guard.
 
 ## Feature Constraints (Intentional)
 
