@@ -1,19 +1,24 @@
-import { type Snippet } from 'svelte'
-import { TableState, type RowCtx } from '../table/table-state.svelte.js'
-import { getDefaultHeader } from './Column.svelte'
+import type { Snippet } from "svelte"
+import { getTableContext, type RowCtx } from "../table/table-state.svelte.js"
+import { getDefaultHeader } from "./Column.svelte"
 
-export type ColumnProps<T, V> = (
-	& {
-		id: string
-		table?: TableState<T>
+// Self-reference type for arrays (defined before ColumnTableRef)
+export interface ColumnSelfRef {
+	readonly id: string
+	toggleVisiblity(): void
+}
+
+// Minimal interface for what Column needs from Table
+export interface ColumnTableRef {
+	dataState: {
+		current: unknown[]
+		sortBy(column: string): void
 	}
-	& ColumnSnippets<T, V>
-	& ColumnDefaults<T>
-	& ColumnOptions<T, V>
-) extends infer K ? {
-	[P in keyof K]: K[P]
-} : never
-
+	positions: {
+		hidden: ColumnSelfRef[]
+	}
+	add(column: unknown): (() => void) | undefined
+}
 
 export interface HeaderCtx<T> {
 	readonly data: T[]
@@ -34,155 +39,223 @@ export type StatusbarCtx<T> = {
 	readonly data: T[]
 }
 
+export const ColumnState = <T, V = unknown>() => $origin(
+	{
+		props: $attrs({
+			id: "" as string,
+			header: undefined as Snippet<[ctx: HeaderCtx<T>]> | string | undefined,
+			row: undefined as Snippet<[item: T, ctx: RowColumnCtx<T, V>]> | undefined,
+			statusbar: undefined as Snippet<[ctx: StatusbarCtx<T>]> | undefined,
+			/**
+			 * Is this column sticky by default?
+			 * @default false
+			 */
+			sticky: false as boolean,
+			/**
+			 * Is this column visible by default?
+			 * @default true
+			 */
+			show: true as boolean,
+			/**
+			 * Is this column sorted by default?
+			 * @default false
+			 */
+			sortby: false as boolean,
+			/**
+			 * The width of the column in pixels by default
+			 * @default 150
+			 */
+			width: 150 as number,
+			/**
+			 * Fixed is like sticky, but in its own category	meant to not be moved/hidden ex. select-boxes
+			 * @default false
+			 */
+			fixed: false as boolean,
+			/**
+			 * The value of the row. Required for sorting/filtering
+			 * @example row => row.name
+			 */
+			value: undefined as ((item: T) => V) | undefined,
+			/**
+			 * Makes the column sortable. Sorts based of a sorting function.
+			 *
+			 * **Important**	 ``value``-attribute is required adjacent to this.
+			 *
+			 * If ``true`` uses the default ``.sort()`` algorithm.
+			 *
+			 * @default false
+			 */
+			sort: false as boolean | ((a: V, b: V) => number),
+			/**
+			 * Is this column resizeable?
+			 * Can not be resized if Table is marked as ``resizeable={false}``
+			 * @default true
+			 */
+			resizeable: true as boolean,
+			/**
+			 *
+			 * @example (value) => value.includes(search)
+			 */
+			filter: undefined as ((value: V) => boolean) | undefined,
 
-export type ColumnSnippets<T, V> = {
-	header?: Snippet<[ctx: HeaderCtx<T>]> | string
-	row?: Snippet<[item: T, ctx: RowColumnCtx<T, V>]>
-	statusbar?: Snippet<[ctx: StatusbarCtx<T>]>
-}
+			/** Styling for the column element (td) */
+			style: undefined as string | undefined,
 
-type ColumnDefaults<T> = {
-	/**
-	 * Is this column sticky by default?
-	 * @default false
-	*/
-	sticky?: boolean
-	/**
-	 * Is this column visible by default?
-	 * @default true
-	 */
-	show?: boolean
-	/**
-	 * Is this column sorted by default?
-	 * @default false
-	*/
-	sortby?: boolean
-	/**
-	 * The width of the column in pixels by default
-	 * @default 150
-	 */
-	width?: number
-}
+			/** Class for the column element (td) */
+			class: undefined as string | undefined,
 
-type ColumnOptions<T, V> = {
-	/**
-	 * Fixed is like sticky, but in its own category — meant to not be moved/hidden ex. select-boxes
-	 * @default false
-	*/
-	fixed?: boolean
-	/**
-	 * The value of the row. Required for sorting/filtering
-	 * @example row => row.name
-	*/
-	value?: (item: T) => V
-	/**
-	 * Makes the column sortable. Sorts based of a sorting function.
-	 * 
-	 * **Important**   `value`-attribute is required adjacent to this.
-	 * 
-	 * If `true` uses the default `.sort()` algorithm.
-	 * 
-	 * @default false
-	*/
-	sort?: boolean | ((a: V, b: V) => number)
-	/**
-	 * Is this column resizeable?  
-	 * Can not be resized if Table is marked as `resizeable={false}` 
-	 * @default true
-	*/
-	resizeable?: boolean
-	/**
-	 * 
-	 * @example (value) => value.includes(search)
-	*/
-	filter?: (value: V) => boolean
+			/** Event when the row-column is clicked */
+			onclick: undefined as
+				| ((event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void)
+				| undefined,
 
-	/** Styling for the column element (td) */
-	style?: string
+			/**
+			 * Pad child element of ``td``/``th`` instead of the column element itself.
+			 * This ensures the child element "fills" the whole column.
+			 * Ex. good if you want to make the column an anchor link ``<a href='...'>``
+			 */
+			pad: undefined as "row" | "header" | "statusbar" | "both" | undefined,
 
-	/** Class for the column element (td) */
-	class?: string
+			/** @internal */
+			_table: undefined as ColumnTableRef | undefined,
+		}),
 
-	/** Event when the row-column is clicked */
-	onclick?: (event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void
+		_table: $state<ColumnTableRef | undefined>(undefined),
 
-	/**
-	 * Pad child element of `td`/`th` instead of the column element itself.  
-	 * This ensures the child element "fills" the whole column.  
-	 * Ex. good if you want to make the column an anchor link; `<a href='...'>`
-	*/
-	pad?: 'row' | 'header' | 'statusbar' | 'both'
-}
-
-
-
-export class ColumnState<T = any, V = any> {
-	#props = {} as ColumnProps<T, V>
-
-	id = $derived(this.#props.id) as string
-
-	/**
-	 * Associated table
-	*/
-	table: TableState<T>
-
-	snippets = $derived({
-		header: typeof this.#props.header === 'string' ? getDefaultHeader(this.#props.header) : this.#props.header,
-		/** Title is the header-snippet, with header-ctx: `{ header: false }` */
-		title: (...args: any[]) => {
-			const getData = () => this.table.dataState.current
-			return this.snippets.header?.(...[args[0], () => ({
-				get header() { return false },
-				get data() {
-					return getData()
-				}
-			})] as any[] as [any])
+		get id() {
+			return $derived(this.props.id)
 		},
-		row: this.#props.row,
-		statusbar: this.#props.statusbar
-	})
 
-	/** 
-	 * Variables that can be saved (e.g. localStorage) 
-	 * and re-provided, where these are default-fallbacks
-	*/
-	defaults = $derived({
-		sticky: this.#props.sticky ?? false,
-		show: this.#props.show ?? true,
-		sortby: this.#props.sortby ?? false,
-		width: this.#props.width ?? 150
-	})
+		get table() {
+			return this._table!
+		},
 
-	/** Static options */
-	options = $derived({
-		fixed: this.#props.fixed ?? false,
-		sort: this.#props.sort ?? false,
-		filter: this.#props.filter,
-		value: this.#props.value,
-		resizeable: this.#props.resizeable ?? true,
-		style: this.#props.style,
-		class: this.#props.class,
-		onclick: this.#props.onclick,
-		padRow: this.#props.pad === 'row' || this.#props.pad === 'both',
-		padHeader: this.#props.pad === 'header' || this.#props.pad === 'both',
-		padStatusbar: this.#props.pad === 'statusbar'
-	})
+		get snippets() {
+			return $derived({
+				header:
+					typeof this.props.header === "string"
+						? getDefaultHeader(this.props.header)
+						: this.props.header,
+				/** Title is the header-snippet, with header-ctx: ``{ header: false }`` */
+				title: ((anchor: Comment, _ctxGetter: unknown) => {
+					const tableRef = this._table
+					const getData = () => tableRef?.dataState.current ?? []
+					const headerProp = this.props.header
+					const headerSnippet =
+						typeof headerProp === "string" ? getDefaultHeader<T>(headerProp) : headerProp
+						// Call the header snippet with a context where header is false
+						// Cast through unknown to work around TypeScript's strict function type checking
+						; (headerSnippet as unknown as (anchor: Comment, getCtx: () => HeaderCtx<T>) => void)?.(
+							anchor,
+							() => ({
+								get header() {
+									return false
+								},
+								get data() {
+									return getData() as T[]
+								}
+							})
+						)
+				}) as Snippet | undefined,
+				row: this.props.row,
+				statusbar: this.props.statusbar,
+			})
+		},
 
-	toggleVisiblity() {
-		const index = this.table.positions.hidden.indexOf(this)
-		if (index > -1) this.table.positions.hidden.splice(index, 1)
-		else this.table.positions.hidden.push(this)
-	}
+		/**
+		 * Variables that can be saved (e.g. localStorage)
+		 * and re-provided, where these are default-fallbacks
+		 */
+		get defaults() {
+			return $derived({
+				sticky: this.props.sticky ?? false,
+				show: this.props.show ?? true,
+				sortby: this.props.sortby ?? false,
+				width: this.props.width ?? 150,
+			})
+		},
 
-	constructor(props: ColumnProps<T, V>) {
-		this.#props = props
+		/** Static options */
+		get options() {
+			return $derived({
+				fixed: this.props.fixed ?? false,
+				sort: this.props.sort ?? false,
+				filter: this.props.filter,
+				value: this.props.value,
+				resizeable: this.props.resizeable ?? true,
+				style: this.props.style,
+				class: this.props.class,
+				onclick: this.props.onclick,
+				padRow: this.props.pad === "row" || this.props.pad === "both",
+				padHeader: this.props.pad === "header" || this.props.pad === "both",
+				padStatusbar: this.props.pad === "statusbar",
+			})
+		},
 
-		this.table = props.table ?? TableState.getContext<T>()!
-		if (!this.table) {
-			throw new Error('svelte-tably: Column must be associated with a Table')
+		toggleVisiblity() {
+			const table = this._table
+			if (!table) return
+			const index = table.positions.hidden.indexOf(this as ColumnSelfRef)
+			if (index > -1) table.positions.hidden.splice(index, 1)
+			else table.positions.hidden.push(this as ColumnSelfRef)
+		},
+
+		/** Stored cleanup function */
+		_cleanup: undefined as (() => void) | undefined,
+
+		/** Call to remove this column from the table */
+		cleanup() {
+			if (typeof this._cleanup === 'function') {
+				this._cleanup()
+				this._cleanup = undefined
+			}
+		}
+	},
+	function() {
+		// Get table from context or from props (for programmatic usage)
+		const table = this.props._table ?? getTableContext<T>()
+		if (!table) {
+			throw new Error("svelte-tably: Column must be associated with a Table")
 		}
 
-		const remove = this.table.add(this)
-		$effect(() => remove)
+		this._table = table as ColumnTableRef
+		const remove = (table as ColumnTableRef).add(this)
+		// Store the cleanup function on the instance
+		this._cleanup = remove
+		return remove
 	}
+)
+
+/** ColumnInstance interface - defined explicitly to avoid circular ReturnType issues */
+export interface ColumnInstance<T = unknown, V = unknown> {
+	readonly id: string
+	readonly table: ColumnTableRef
+	readonly snippets: {
+		header: Snippet<[ctx: HeaderCtx<T>]> | undefined
+		title: Snippet | undefined
+		row: Snippet<[item: T, ctx: RowColumnCtx<T, V>]> | undefined
+		statusbar: Snippet<[ctx: StatusbarCtx<T>]> | undefined
+	}
+	readonly defaults: {
+		sticky: boolean
+		show: boolean
+		sortby: boolean
+		width: number
+	}
+	readonly options: {
+		fixed: boolean
+		sort: boolean | ((a: V, b: V) => number)
+		filter: ((value: V) => boolean) | undefined
+		value: ((item: T) => V) | undefined
+		resizeable: boolean
+		style: string | undefined
+		class: string | undefined
+		onclick: ((event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void) | undefined
+		padRow: boolean
+		padHeader: boolean
+		padStatusbar: boolean
+	}
+	toggleVisiblity(): void
 }
+
+export type ColumnProps<T = unknown, V = unknown> = $attrs.Of<ReturnType<typeof ColumnState<T, V>>>

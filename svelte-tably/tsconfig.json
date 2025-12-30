@@ -13,7 +13,8 @@
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
-		"sourceMap": true
+		"sourceMap": true,
+		"types": ["svelte-origin/globals"]
 	},
 	"exclude": ["npm", "svelte.config.js", "_package"]
 }

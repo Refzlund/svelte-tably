@@ -22,5 +22,8 @@
 		"svelte-tably": "workspace:*",
 		"typescript": "latest",
 		"vite": "^6"
+	},
+	"dependencies": {
+		"svelte-origin": "next"
 	}
 }

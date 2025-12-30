@@ -11,11 +11,14 @@ Pattern:
 - Svelte components (`Column.svelte`, `Row.svelte`, `Panel.svelte`, `Expandable.svelte`) are thin wrappers.
 - Each wrapper constructs a corresponding state instance (`ColumnState`, `RowState`, `PanelState`, `ExpandableState`).
 - State instances attach to the current `TableState` via Svelte context.
+- Each state module stores its own cleanup function in `_cleanup` and exposes a `cleanup()` method.
+- Components use `onDestroy` to call `cleanup()` explicitly (workaround for svelte-origin not calling cleanup).
 
 Why:
 
 - Keeps the rendering component (`Table.svelte`) as the central orchestrator.
 - Keeps behavior/config in TypeScript modules (`*.svelte.ts`) which are easier to test and reason about.
+- Storing cleanup directly on state bypasses svelte-origin's `__cleanup` which doesn't work correctly.
 
 Rule of thumb:
 
@@ -59,6 +62,15 @@ Guidelines:
 - Make dependencies explicit (read reactive values inside the effect).
 - Use `untrack` for work that should not create extra reactive dependencies.
 - Use `requestAnimationFrame` to batch measurement and avoid layout thrash.
+
+### Svelte 5 Proxy Equality Comparisons
+
+Svelte 5 uses proxies for `$state` objects. When comparing state objects:
+
+- Use `c.id !== key` instead of `c !== state` for equality checks.
+- Direct reference comparison with proxies causes `state_proxy_equality_mismatch` warnings.
+- This is especially important in cleanup functions that filter arrays.
+- When filtering arrays that may contain undefined entries, use `c && c.id !== key` as a guard.
 
 ## Feature Constraints (Intentional)
 
@@ -135,3 +147,35 @@ Guideline:
 
 - Prefer changesets for any library change that should land in npm.
 - Keep the generated `npm/` directory out of manual edits; it’s build output.
+## Known Warnings & Limitations
+
+### Hydration Warning: "Failed to hydrate"
+
+During SSR with SvelteKit, the table may show a hydration warning. This occurs because:
+
+- The table registers columns during SSR render
+- Client-side hydration fails due to state mismatch
+- Svelte falls back to full client-side render (which works correctly)
+
+The warning is benign and the table functions correctly after fallback.
+
+### runic-reorder: "List not inside an area"
+
+When using `reorderable` tables, you may see this console error:
+
+```
+runic-reorder: List not inside an area. Make sure to use `use:area...` for a parent
+```
+
+This is a timing issue in `runic-reorder` during SSR/hydration where the snippet tries to find
+its area before the action has set it up. The error is benign and the reorderable functionality
+works correctly after the component mounts.
+
+### svelte-origin Cleanup
+
+The `svelte-origin` library's `__cleanup` property does NOT contain the actual cleanup function
+returned from the state's init function. To work around this:
+
+- State modules store their cleanup function in a `_cleanup` property
+- State modules expose a `cleanup()` method that calls `_cleanup`
+- Components use `onDestroy` to explicitly call `state.cleanup()`

@@ -1,7 +1,7 @@
 import { untrack } from 'svelte'
-import type { TableState } from './table-state.svelte.js'
+import type { TableInstance } from './table-state.svelte.js'
 
-export class Virtualization<T extends any> {
+export class Virtualization<T> {
 	scrollTop = $state(0)
 
 	viewport = $state({
@@ -22,9 +22,10 @@ export class Virtualization<T extends any> {
 	#spacing = $derived(this.viewport.height / 2)
 	#renderItemLength = $derived(Math.ceil(Math.max(30, (this.viewport.height / this.#heightPerItem) * 2)))
 
-	constructor(table: TableState<T>) {
+	constructor(table: TableInstance<T>) {
 		let ticked = $state(false)
 		$effect.pre(() => {
+			if (!table.dataState) return
 			table.dataState.origin
 			untrack(() => {
 				ticked = false
@@ -36,6 +37,7 @@ export class Virtualization<T extends any> {
 		let measureRun = 0
 		$effect(() => {
 			if (!ticked) return
+			if (!table.dataState) return
 			table.dataState.current
 			this.viewport.element
 			this.viewport.height
@@ -84,6 +86,7 @@ export class Virtualization<T extends any> {
 		let virtualRaf = 0
 		$effect(() => {
 			if (!ticked) return
+			if (!table.dataState) return
 			this.scrollTop
 			this.#heightPerItem
 			this.viewport.height
@@ -114,6 +117,7 @@ export class Virtualization<T extends any> {
 
 		$effect(() => {
 			if (!ticked) return
+			if (!table.dataState) return
 			table.dataState.sortReverse
 			table.dataState.sortby
 			this.#heightPerItem

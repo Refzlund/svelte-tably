@@ -9,15 +9,18 @@
 -->
 
 <script lang='ts'>
-
+	import { onDestroy } from 'svelte'
 	import { ExpandableState, type ExpandableProps } from './expandable-state.svelte.js'
-	import { fromProps } from '../utility.svelte.js'
 
 	type T = $$Generic
 
-	let { ...restProps }: ExpandableProps<T> = $props()
-	
-	const properties = fromProps(restProps)
-	new ExpandableState<T>(properties)
+	type $$Props = ExpandableProps<T>
+	let expandable = $attrs.origin(ExpandableState<T>())
 
+	// Workaround for svelte-origin not calling cleanup on component destroy
+	onDestroy(() => {
+		if (typeof expandable.cleanup === 'function') {
+			expandable.cleanup()
+		}
+	})
 </script>
