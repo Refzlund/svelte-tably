@@ -34,7 +34,7 @@
     },
     "svelte-tably": {
       "name": "svelte-tably",
-      "version": "1.5.0",
+      "version": "1.5.1",
       "dependencies": {
         "runic-reorder": "^1",
       },
@@ -1101,7 +1101,7 @@
 
     "svelte-eslint-parser": ["svelte-eslint-parser@1.4.1", "", { "dependencies": { "eslint-scope": "^8.2.0", "eslint-visitor-keys": "^4.0.0", "espree": "^10.0.0", "postcss": "^8.4.49", "postcss-scss": "^4.0.9", "postcss-selector-parser": "^7.0.0" }, "peerDependencies": { "svelte": "^3.37.0 || ^4.0.0 || ^5.0.0" }, "optionalPeers": ["svelte"] }, "sha512-1eqkfQ93goAhjAXxZiu1SaKI9+0/sxp4JIWQwUpsz7ybehRE5L8dNuz7Iry7K22R47p5/+s9EM+38nHV2OlgXA=="],
 
-    "svelte-origin": ["svelte-origin@1.0.0-next.42", "", { "dependencies": { "magic-string": "^0.30.0" }, "peerDependencies": { "svelte": "^5.0.0" }, "bin": { "svelte-origin": "dist/cli.js" } }, "sha512-VGzD8izxfnf3VfaUyok6UL3E+/4UGqSaVTQkUJD/HAte49toUmv/+ykfrshC7j9LRbHvj+wq9rBtdV/ozY88Lw=="],
+    "svelte-origin": ["svelte-origin@1.0.0-next.43", "", { "dependencies": { "magic-string": "^0.30.0" }, "peerDependencies": { "svelte": "^5.0.0" }, "bin": { "svelte-origin": "dist/cli.js" } }, "sha512-A1c7MQat5xcgGEZZk0awUSgWVoQNqxK6rNWm59YA7Q2p9BUWL+/+OCFBKUM//zknBR2PO/rApQQSxts3Xo3AUg=="],
 
     "svelte-tably": ["svelte-tably@workspace:svelte-tably"],
 
