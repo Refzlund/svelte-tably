@@ -32,7 +32,7 @@ type ContextOptions = {
 }
 
 export const RowState = <T>() => $origin({
-	props: $attrs({
+	props: $origin.props({
 		/** Class name for the row element */
 		class: undefined as string | undefined,
 		/**
@@ -61,21 +61,21 @@ export const RowState = <T>() => $origin({
 	},
 
 	get snippets() {
-		return $derived({
+		return {
 			context: this.props.context,
 			contextHeader: this.props.contextHeader
-		})
+		}
 	},
 
 	get events() {
-		return $derived({
+		return {
 			onclick: this.props.onclick,
 			oncontextmenu: this.props.oncontextmenu
-		})
+		}
 	},
 
 	get options() {
-		return $derived({
+		return {
 			class: this.props.class,
 			context: {
 				class: this.props.contextOptions?.class,
@@ -83,23 +83,25 @@ export const RowState = <T>() => $origin({
 				width: this.props.contextOptions?.width ?? 'max-content',
 				alignHeaderToRows: this.props.contextOptions?.alignHeaderToRows ?? false
 			}
-		})
-	}
-}, function() {
-	// Get table from context or from props (for programmatic usage)
-	const table = this.props._table ?? getTableContext<T>()
-	if (!table) {
-		throw new Error('svelte-tably: Row must be associated with a Table')
-	}
+		}
+	},
 
-	table.row = this as RowInstance
-	this._cleanup = () => {
-		if (table.row === this) {
-			table.row = undefined
+	init(tableFromContext?: RowTableRef) {
+		// Get table from argument, props, or context fallback
+		const table = tableFromContext ?? this.props._table
+		if (!table) {
+			throw new Error('svelte-tably: Row must be associated with a Table')
+		}
+
+		table.row = this as RowInstance
+		this._cleanup = () => {
+			if (table.row === this) {
+				table.row = undefined
+			}
 		}
 	}
 })
 
 export type RowInstance = ReturnType<ReturnType<typeof RowState>>
-export type RowProps<T = unknown> = $attrs.Of<ReturnType<typeof RowState<T>>>
+export type RowProps<T = unknown> = $origin.Props<ReturnType<typeof RowState<T>>>
 

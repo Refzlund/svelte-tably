@@ -92,8 +92,10 @@
 	type T = $$Generic
 	type $$Props = TableProps<T>
 
-	let tableState = $attrs.origin(TableState<T>())
+	let tableState = $origin.component(TableState<T>())
 	const table = tableState as TableInstance<T>
+	
+	// Note: init() is called automatically by svelte-origin via the init callback
 	
 	const mount = mounted()
 
@@ -140,12 +142,27 @@
 	type ColumnType = typeof table.columns[string]
 	const isColumn = (value: unknown): value is ColumnType =>
 		value != null && typeof value === 'object' && 'defaults' in value && 'snippets' in value
-	const fixed = $derived(table.positions.fixed.filter(isColumn))
-	const hidden = $derived(table.positions.hidden.filter(isColumn))
+	
+	// Use the version counter to trigger reactivity
+	// (svelte-origin strips $state() from origin definitions, so we use a version counter)
+	const fixed = $derived.by(() => {
+		table._positionsVersion
+		return table._positionsState.fixed.filter(isColumn)
+	})
+	const hidden = $derived.by(() => {
+		table._positionsVersion
+		return table._positionsState.hidden.filter(isColumn)
+	})
 	const notHidden = (column: ColumnType | undefined) =>
-		!!column && !table.positions.hidden.includes(column)
-	const sticky = $derived(table.positions.sticky.filter(notHidden))
-	const scrolled = $derived(table.positions.scroll.filter(notHidden))
+		!!column && !table._positionsState.hidden.includes(column)
+	const sticky = $derived.by(() => {
+		table._positionsVersion
+		return table._positionsState.sticky.filter(notHidden)
+	})
+	const scrolled = $derived.by(() => {
+		table._positionsVersion
+		return table._positionsState.scroll.filter(notHidden)
+	})
 	const columns = $derived([...fixed, ...sticky, ...scrolled])
 
 	const autoSchema = $derived.by(() => {
@@ -973,14 +990,13 @@
 
 {#if table.options.select || table.options.reorderable || table.expandable}
 	{@const { select, reorderable } = table.options}
-	{@const expandable = table.expandable}
 	{@const {
 		show = 'hover',
 		style = 'column',
 		rowSnippet = rowSelected,
 		headerSnippet = headerSelected
 	} = typeof select === 'boolean' ? {} : select}
-	{#if show !== 'never' || reorderable || expandable?.options.chevron !== 'never'}
+	{#if show !== 'never' || reorderable || table.expandable?.options.chevron !== 'never'}
 		<Column
 			id="__fixed"
 			_table={table}
@@ -990,7 +1006,7 @@
 				0 +
 					(select && show !== 'never' ? 34 : 0) +
 					(reorderable ? 34 : 0) +
-					(expandable && expandable?.options.chevron !== 'never' ? 34 : 0)
+					(table.expandable && table.expandable?.options.chevron !== 'never' ? 34 : 0)
 			)}
 			resizeable={false}
 		>
@@ -1052,7 +1068,7 @@
 							}
 						})}
 					{/if}
-					{#if expandable && expandable?.options.chevron !== 'never'}
+					{#if table.expandable && table.expandable?.options.chevron !== 'never'}
 						{@const expandId = getExpandId(item as T)}
 						{@const expanded = row.expanded}
 						{@const label = expanded ? 'Collapse row' : 'Expand row'}
@@ -1065,7 +1081,7 @@
 							aria-controls={expandId}
 							onclick={() => (row.expanded = !row.expanded)}
 						>
-							{#if expanded || expandable.options.chevron === 'always' || (row.rowHovered && expandable.options.chevron === 'hover')}
+							{#if expanded || table.expandable.options.chevron === 'always' || (row.rowHovered && table.expandable.options.chevron === 'hover')}
 								{@render chevronSnippet(expanded ? 180 : 90)}
 							{/if}
 						</button>

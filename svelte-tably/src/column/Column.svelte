@@ -25,14 +25,21 @@
 </script>
 
 <script lang='ts'>
-	import { onDestroy } from 'svelte'
+	import { onMount, onDestroy, untrack } from 'svelte'
 	import { ColumnState, type ColumnProps } from './column-state.svelte.js'
 
 	type T = $$Generic
 	type V = $$Generic
 
 	type $$Props = ColumnProps<T, V>
-	let column = $attrs.origin(ColumnState<T, V>())
+	let column = $origin.component(ColumnState<T, V>())
+
+	// Initialize column on mount (runs once)
+	onMount(() => {
+		if (typeof column.init === 'function') {
+			column.init()
+		}
+	})
 
 	// Workaround for svelte-origin not calling cleanup on component destroy
 	onDestroy(() => {

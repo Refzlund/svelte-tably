@@ -12,7 +12,7 @@ export type PanelCtx<T> = {
 }
 
 export const PanelState = <T>() => $origin({
-	props: $attrs({
+	props: $origin.props({
 		id: '' as string,
 		/**
 		 * A darkened backdrop?
@@ -37,29 +37,31 @@ export const PanelState = <T>() => $origin({
 	},
 
 	get id() {
-		return $derived(this.props.id)
+		return this.props.id
 	},
 
 	get backdrop() {
-		return $derived(this.props.backdrop ?? true)
+		return this.props.backdrop ?? true
 	},
 
 	get children() {
-		return $derived(this.props.children)
-	}
-}, function() {
-	// Get table from context or from props (for programmatic usage)
-	const table = this.props._table ?? getTableContext<T>()
-	if (!table) {
-		throw new Error('svelte-tably: Panel must be associated with a Table')
-	}
+		return this.props.children
+	},
 
-	const key = this.props.id
-	table.panels[key] = this as PanelInstance
-	this._cleanup = () => {
-		delete table.panels[key]
+	init() {
+		// Get table from context or from props (for programmatic usage)
+		const table = this.props._table ?? getTableContext<T>()
+		if (!table) {
+			throw new Error('svelte-tably: Panel must be associated with a Table')
+		}
+
+		const key = this.props.id
+		table.panels[key] = this as PanelInstance
+		this._cleanup = () => {
+			delete table.panels[key]
+		}
 	}
 })
 
 export type PanelInstance = ReturnType<ReturnType<typeof PanelState>>
-export type PanelProps<T = unknown> = $attrs.Of<ReturnType<typeof PanelState<T>>>
+export type PanelProps<T = unknown> = $origin.Props<ReturnType<typeof PanelState<T>>>

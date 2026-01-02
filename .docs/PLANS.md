@@ -43,6 +43,7 @@ When changing the library:
 
 These pages exist to reproduce issues and regressions:
 
+- `/testing` comprehensive automated test suite (22 tests covering async load, virtualization, selection, expandable, sorting, filtering, edge cases, etc.)
 - `/issues/19` context column rendering behavior
 - `/issues/20` virtualization unmount race + filter-loop repro
 - `/issues/fix-new-bugs` multi-repro page including sandboxed iframe storage errors
