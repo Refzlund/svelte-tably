@@ -1,6 +1,6 @@
 {
 	"name": "svelte-tably",
-	"version": "1.5.3",
+	"version": "1.5.4",
 	"description": "A high performant dynamic table for Svelte 5",
 	"license": "MIT",
 	"repository": {

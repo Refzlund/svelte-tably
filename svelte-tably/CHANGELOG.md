@@ -1,5 +1,11 @@
 # svelte-tably
 
+## 1.5.4
+
+### Patch Changes
+
+- refactor: use $origin reactivity model instead of classes ([#34](https://github.com/Refzlund/svelte-tably/pull/34))
+
 ## 1.5.3
 
 ### Patch Changes
