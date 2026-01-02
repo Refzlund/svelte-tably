@@ -39,179 +39,178 @@ export type StatusbarCtx<T> = {
 	readonly data: T[]
 }
 
-export const ColumnState = <T, V = unknown>() => $origin(
-	{
-		props: $attrs({
-			id: "" as string,
-			header: undefined as Snippet<[ctx: HeaderCtx<T>]> | string | undefined,
-			row: undefined as Snippet<[item: T, ctx: RowColumnCtx<T, V>]> | undefined,
-			statusbar: undefined as Snippet<[ctx: StatusbarCtx<T>]> | undefined,
-			/**
-			 * Is this column sticky by default?
-			 * @default false
-			 */
-			sticky: false as boolean,
-			/**
-			 * Is this column visible by default?
-			 * @default true
-			 */
-			show: true as boolean,
-			/**
-			 * Is this column sorted by default?
-			 * @default false
-			 */
-			sortby: false as boolean,
-			/**
-			 * The width of the column in pixels by default
-			 * @default 150
-			 */
-			width: 150 as number,
-			/**
-			 * Fixed is like sticky, but in its own category	meant to not be moved/hidden ex. select-boxes
-			 * @default false
-			 */
-			fixed: false as boolean,
-			/**
-			 * The value of the row. Required for sorting/filtering
-			 * @example row => row.name
-			 */
-			value: undefined as ((item: T) => V) | undefined,
-			/**
-			 * Makes the column sortable. Sorts based of a sorting function.
-			 *
-			 * **Important**	 ``value``-attribute is required adjacent to this.
-			 *
-			 * If ``true`` uses the default ``.sort()`` algorithm.
-			 *
-			 * @default false
-			 */
-			sort: false as boolean | ((a: V, b: V) => number),
-			/**
-			 * Is this column resizeable?
-			 * Can not be resized if Table is marked as ``resizeable={false}``
-			 * @default true
-			 */
-			resizeable: true as boolean,
-			/**
-			 *
-			 * @example (value) => value.includes(search)
-			 */
-			filter: undefined as ((value: V) => boolean) | undefined,
+export const ColumnState = <T, V = unknown>() => $origin({
+	props: $origin.props({
+		id: "" as string,
+		header: undefined as Snippet<[ctx: HeaderCtx<T>]> | string | undefined,
+		row: undefined as Snippet<[item: T, ctx: RowColumnCtx<T, V>]> | undefined,
+		statusbar: undefined as Snippet<[ctx: StatusbarCtx<T>]> | undefined,
+		/**
+		 * Is this column sticky by default?
+		 * @default false
+		 */
+		sticky: false as boolean,
+		/**
+		 * Is this column visible by default?
+		 * @default true
+		 */
+		show: true as boolean,
+		/**
+		 * Is this column sorted by default?
+		 * @default false
+		 */
+		sortby: false as boolean,
+		/**
+		 * The width of the column in pixels by default
+		 * @default 150
+		 */
+		width: 150 as number,
+		/**
+		 * Fixed is like sticky, but in its own category	meant to not be moved/hidden ex. select-boxes
+		 * @default false
+		 */
+		fixed: false as boolean,
+		/**
+		 * The value of the row. Required for sorting/filtering
+		 * @example row => row.name
+		 */
+		value: undefined as ((item: T) => V) | undefined,
+		/**
+		 * Makes the column sortable. Sorts based of a sorting function.
+		 *
+		 * **Important**	 ``value``-attribute is required adjacent to this.
+		 *
+		 * If ``true`` uses the default ``.sort()`` algorithm.
+		 *
+		 * @default false
+		 */
+		sort: false as boolean | ((a: V, b: V) => number),
+		/**
+		 * Is this column resizeable?
+		 * Can not be resized if Table is marked as ``resizeable={false}``
+		 * @default true
+		 */
+		resizeable: true as boolean,
+		/**
+		 *
+		 * @example (value) => value.includes(search)
+		 */
+		filter: undefined as ((value: V) => boolean) | undefined,
 
-			/** Styling for the column element (td) */
-			style: undefined as string | undefined,
+		/** Styling for the column element (td) */
+		style: undefined as string | undefined,
 
-			/** Class for the column element (td) */
-			class: undefined as string | undefined,
+		/** Class for the column element (td) */
+		class: undefined as string | undefined,
 
-			/** Event when the row-column is clicked */
-			onclick: undefined as
-				| ((event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void)
-				| undefined,
-
-			/**
-			 * Pad child element of ``td``/``th`` instead of the column element itself.
-			 * This ensures the child element "fills" the whole column.
-			 * Ex. good if you want to make the column an anchor link ``<a href='...'>``
-			 */
-			pad: undefined as "row" | "header" | "statusbar" | "both" | undefined,
-
-			/** @internal */
-			_table: undefined as ColumnTableRef | undefined,
-		}),
-
-		_table: $state<ColumnTableRef | undefined>(undefined),
-
-		get id() {
-			return $derived(this.props.id)
-		},
-
-		get table() {
-			return this._table!
-		},
-
-		get snippets() {
-			return $derived({
-				header:
-					typeof this.props.header === "string"
-						? getDefaultHeader(this.props.header)
-						: this.props.header,
-				/** Title is the header-snippet, with header-ctx: ``{ header: false }`` */
-				title: ((anchor: Comment, _ctxGetter: unknown) => {
-					const tableRef = this._table
-					const getData = () => tableRef?.dataState.current ?? []
-					const headerProp = this.props.header
-					const headerSnippet =
-						typeof headerProp === "string" ? getDefaultHeader<T>(headerProp) : headerProp
-						// Call the header snippet with a context where header is false
-						// Cast through unknown to work around TypeScript's strict function type checking
-						; (headerSnippet as unknown as (anchor: Comment, getCtx: () => HeaderCtx<T>) => void)?.(
-							anchor,
-							() => ({
-								get header() {
-									return false
-								},
-								get data() {
-									return getData() as T[]
-								}
-							})
-						)
-				}) as Snippet | undefined,
-				row: this.props.row,
-				statusbar: this.props.statusbar,
-			})
-		},
+		/** Event when the row-column is clicked */
+		onclick: undefined as
+			| ((event: MouseEvent, rowColumnCtx: RowColumnCtx<T, V>) => void)
+			| undefined,
 
 		/**
-		 * Variables that can be saved (e.g. localStorage)
-		 * and re-provided, where these are default-fallbacks
+		 * Pad child element of ``td``/``th`` instead of the column element itself.
+		 * This ensures the child element "fills" the whole column.
+		 * Ex. good if you want to make the column an anchor link ``<a href='...'>``
 		 */
-		get defaults() {
-			return $derived({
-				sticky: this.props.sticky ?? false,
-				show: this.props.show ?? true,
-				sortby: this.props.sortby ?? false,
-				width: this.props.width ?? 150,
-			})
-		},
+		pad: undefined as "row" | "header" | "statusbar" | "both" | undefined,
 
-		/** Static options */
-		get options() {
-			return $derived({
-				fixed: this.props.fixed ?? false,
-				sort: this.props.sort ?? false,
-				filter: this.props.filter,
-				value: this.props.value,
-				resizeable: this.props.resizeable ?? true,
-				style: this.props.style,
-				class: this.props.class,
-				onclick: this.props.onclick,
-				padRow: this.props.pad === "row" || this.props.pad === "both",
-				padHeader: this.props.pad === "header" || this.props.pad === "both",
-				padStatusbar: this.props.pad === "statusbar",
-			})
-		},
+		/** @internal */
+		_table: undefined as ColumnTableRef | undefined,
+	}),
 
-		toggleVisiblity() {
-			const table = this._table
-			if (!table) return
-			const index = table.positions.hidden.indexOf(this as ColumnSelfRef)
-			if (index > -1) table.positions.hidden.splice(index, 1)
-			else table.positions.hidden.push(this as ColumnSelfRef)
-		},
+	_table: $state<ColumnTableRef | undefined>(undefined),
 
-		/** Stored cleanup function */
-		_cleanup: undefined as (() => void) | undefined,
+	get id() {
+		return this.props.id
+	},
 
-		/** Call to remove this column from the table */
-		cleanup() {
-			if (typeof this._cleanup === 'function') {
-				this._cleanup()
-				this._cleanup = undefined
-			}
+	get table() {
+		return this._table!
+	},
+
+	get snippets() {
+		return {
+			header:
+				typeof this.props.header === "string"
+					? getDefaultHeader(this.props.header)
+					: this.props.header,
+			/** Title is the header-snippet, with header-ctx: ``{ header: false }`` */
+			title: ((anchor: Comment, _ctxGetter: unknown) => {
+				const tableRef = this._table
+				const getData = () => tableRef?.dataState.current ?? []
+				const headerProp = this.props.header
+				const headerSnippet =
+					typeof headerProp === "string" ? getDefaultHeader<T>(headerProp) : headerProp
+					// Call the header snippet with a context where header is false
+					// Cast through unknown to work around TypeScript's strict function type checking
+					; (headerSnippet as unknown as (anchor: Comment, getCtx: () => HeaderCtx<T>) => void)?.(
+						anchor,
+						() => ({
+							get header() {
+								return false
+							},
+							get data() {
+								return getData() as T[]
+							}
+						})
+					)
+			}) as Snippet | undefined,
+			row: this.props.row,
+			statusbar: this.props.statusbar,
 		}
 	},
-	function() {
+
+	/**
+	 * Variables that can be saved (e.g. localStorage)
+	 * and re-provided, where these are default-fallbacks
+	 */
+	get defaults() {
+		return {
+			sticky: this.props.sticky ?? false,
+			show: this.props.show ?? true,
+			sortby: this.props.sortby ?? false,
+			width: this.props.width ?? 150,
+		}
+	},
+
+	/** Static options */
+	get options() {
+		return {
+			fixed: this.props.fixed ?? false,
+			sort: this.props.sort ?? false,
+			filter: this.props.filter,
+			value: this.props.value,
+			resizeable: this.props.resizeable ?? true,
+			style: this.props.style,
+			class: this.props.class,
+			onclick: this.props.onclick,
+			padRow: this.props.pad === "row" || this.props.pad === "both",
+			padHeader: this.props.pad === "header" || this.props.pad === "both",
+			padStatusbar: this.props.pad === "statusbar",
+		}
+	},
+
+	toggleVisiblity() {
+		const table = this._table
+		if (!table) return
+		const index = table.positions.hidden.indexOf(this as ColumnSelfRef)
+		if (index > -1) table.positions.hidden.splice(index, 1)
+		else table.positions.hidden.push(this as ColumnSelfRef)
+	},
+
+	/** Stored cleanup function */
+	_cleanup: undefined as (() => void) | undefined,
+
+	/** Call to remove this column from the table */
+	cleanup() {
+		if (typeof this._cleanup === 'function') {
+			this._cleanup()
+			this._cleanup = undefined
+		}
+	},
+
+	init() {
 		// Get table from context or from props (for programmatic usage)
 		const table = this.props._table ?? getTableContext<T>()
 		if (!table) {
@@ -224,7 +223,7 @@ export const ColumnState = <T, V = unknown>() => $origin(
 		this._cleanup = remove
 		return remove
 	}
-)
+})
 
 /** ColumnInstance interface - defined explicitly to avoid circular ReturnType issues */
 export interface ColumnInstance<T = unknown, V = unknown> {
@@ -258,4 +257,4 @@ export interface ColumnInstance<T = unknown, V = unknown> {
 	toggleVisiblity(): void
 }
 
-export type ColumnProps<T = unknown, V = unknown> = $attrs.Of<ReturnType<typeof ColumnState<T, V>>>
+export type ColumnProps<T = unknown, V = unknown> = $origin.Props<ReturnType<typeof ColumnState<T, V>>>

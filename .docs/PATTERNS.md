@@ -14,6 +14,13 @@ Pattern:
 - Each state module stores its own cleanup function in `_cleanup` and exposes a `cleanup()` method.
 - Components use `onDestroy` to call `cleanup()` explicitly (workaround for svelte-origin not calling cleanup).
 
+**Critical: getContext Timing**
+
+- `getContext()` MUST be called synchronously during component initialization.
+- Never call `getContext()` inside `onMount`, `$effect`, or async callbacks.
+- Components get context at the top level and pass it to `init()` if needed.
+- The `init()` method accepts the table from context as an optional parameter.
+
 Why:
 
 - Keeps the rendering component (`Table.svelte`) as the central orchestrator.

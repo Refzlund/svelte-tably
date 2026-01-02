@@ -3,212 +3,185 @@ import { untrack } from "svelte";
 
 // Minimal interface for what Data needs from Table to avoid circular dependency
 interface TableLike {
-  columns: Record<
-    string,
-    {
-      options: {
-        sort: boolean | ((a: unknown, b: unknown) => number);
-        value: ((item: unknown) => unknown) | undefined;
-        filter: ((value: unknown) => boolean) | undefined;
-      };
-    }
-  >;
+	columns: Record<
+		string,
+		{
+			options: {
+				sort: boolean | ((a: unknown, b: unknown) => number);
+				value: ((item: unknown) => unknown) | undefined;
+				filter: ((value: unknown) => boolean) | undefined;
+			};
+		}
+	>;
 }
 
 /** Exported interface for DataInstance to avoid circular ReturnType issues */
 export interface DataInstance<T = unknown> {
-  readonly origin: T[];
-  sorted: T[];
-  filtered: T[];
-  sortby: string | undefined;
-  sortReverse: boolean;
-  readonly current: T[];
-  sortBy(column: string): void;
-  sortAction(node: HTMLElement, column: string): void;
-  sortTable(): void;
+	readonly origin: T[];
+	sorted: T[];
+	filtered: T[];
+	sortby: string | undefined;
+	sortReverse: boolean;
+	readonly current: T[];
+	sortBy(column: string): void;
+	sortAction(node: HTMLElement, column: string): void;
+	sortTable(): void;
 }
 
-export type DataProps<T = unknown> = $attrs.Of<ReturnType<typeof Data<T>>>;
+export type DataProps<T = unknown> = $origin.Props<ReturnType<typeof Data<T>>>;
 
 export const Data = <T>() =>
-  $origin(
-    {
-      props: $attrs({
-        _table: undefined as TableLike | undefined,
-        _data: [] as T[],
-        _filters: undefined as ((item: T) => boolean)[] | undefined,
-        _reorderable: false as boolean,
-      }),
+	$origin(
+		{
+			props: $origin.props({
+				_table: undefined as TableLike | undefined,
+				_data: [] as T[],
+				_filters: undefined as ((item: T) => boolean)[] | undefined,
+				_reorderable: false as boolean,
+			}),
 
-      _origin: $state<T[]>([]),
-      _sorted: $state<T[]>([]),
-      _filtered: $state<T[]>([]),
-      _sortby: $state<string | undefined>(undefined),
-      _sortReverse: $state(false),
+			// Exposed fields with $state() for reactivity
+			sorted: $state([] as T[]),
+			filtered: $state([] as T[]),
+			sortby: $state(undefined as string | undefined),
+			sortReverse: $state(false),
 
-      get origin() {
-        return this._origin;
-      },
+			get origin() {
+				return this.props._data;
+			},
 
-      set origin(value: T[]) {
-        this._origin = value;
-      },
+			// NOTE: `current` is accessed frequently by Virtualization
+			// The getter now just returns filtered or _data directly - these are reactive
+			get current() {
+				return this.props._reorderable ? this.props._data : this.filtered;
+			},
 
-      get sorted() {
-        return this._sorted;
-      },
+			sortBy(column: string) {
+				const table = this.props._table;
+				if (!table) return;
+				if (this.props._reorderable) return;
 
-      set sorted(value: T[]) {
-        this._sorted = value;
-      },
+				const columnInstance = table.columns[column];
+				if (!columnInstance) return;
+				const { sort, value } = columnInstance.options;
+				if (!sort || !value) return;
 
-      get filtered() {
-        return this._filtered;
-      },
+				if (this.sortby === column) {
+					this.sortReverse = !this.sortReverse;
+				} else {
+					this.sortReverse = false;
+					this.sortby = column;
+				}
+			},
 
-      set filtered(value: T[]) {
-        this._filtered = value;
-      },
+			sortAction(node: HTMLElement, column: string) {
+				$effect(() =>
+					on(node, "click", () => {
+						// Inline sortBy logic to work around svelte-origin transformation issue
+						const table = this.props._table;
+						if (!table) return;
+						if (this.props._reorderable) return;
 
-      get sortby() {
-        return this._sortby;
-      },
+						const columnInstance = table.columns[column];
+						if (!columnInstance) return;
+						const { sort, value } = columnInstance.options;
+						if (!sort || !value) return;
 
-      set sortby(value: string | undefined) {
-        this._sortby = value;
-      },
+						if (this.sortby === column) {
+							this.sortReverse = !this.sortReverse;
+						} else {
+							this.sortReverse = false;
+							this.sortby = column;
+						}
+					}),
+				);
+			},
 
-      get sortReverse() {
-        return this._sortReverse;
-      },
+			sortTable() {
+				const table = this.props._table;
+				if (!table) return;
 
-      set sortReverse(value: boolean) {
-        this._sortReverse = value;
-      },
+				if (!this.sortby || this.props._reorderable) {
+					this.sorted = [...this.props._data];
+					return;
+				}
 
-      get current() {
-        return $derived(this.props._reorderable ? this._origin : this._filtered);
-      },
+				const column = table.columns[this.sortby];
+				let { sort, value } = column?.options ?? {};
 
-      sortBy(column: string) {
-        const table = this.props._table;
-        if (!table) return;
-        if (this.props._reorderable) return;
+				if (!sort || !value) {
+					this.sorted = [...this.props._data];
+					return;
+				}
 
-        const columnInstance = table.columns[column];
-        if (!columnInstance) return;
-        const { sort, value } = columnInstance.options;
-        if (!sort || !value) return;
+				if (sort === true) {
+					sort = (a, b) => String(a).localeCompare(String(b));
+				}
 
-        if (this._sortby === column) {
-          this._sortReverse = !this._sortReverse;
-        } else {
-          this._sortReverse = false;
-          this._sortby = column;
-        }
-      },
+				if (this.sortReverse) {
+					this.sorted = this.props._data.toSorted((a, b) => sort(value(b), value(a)));
+				} else {
+					this.sorted = this.props._data.toSorted((a, b) => sort(value(a), value(b)));
+				}
+			},
+		},
+		function() {
+			const table = this.props._table;
+			if (!table) return;
 
-      sortAction(node: HTMLElement, column: string) {
-        $effect(() =>
-          on(node, "click", () => {
-            // Inline sortBy logic to work around svelte-origin transformation issue
-            const table = this.props._table;
-            if (!table) return;
-            if (this.props._reorderable) return;
+			// Initialize from props
+			this.sorted = [...this.props._data];
+			this.filtered = this.sorted;
 
-            const columnInstance = table.columns[column];
-            if (!columnInstance) return;
-            const { sort, value } = columnInstance.options;
-            if (!sort || !value) return;
+			// React to data changes
+			$effect(() => {
+				// Track data - reading it establishes the dependency
+				this.props._data;
 
-            if (this._sortby === column) {
-              this._sortReverse = !this._sortReverse;
-            } else {
-              this._sortReverse = false;
-              this._sortby = column;
-            }
-          }),
-        );
-      },
+				if (this.props._reorderable) return;
 
-      sortTable() {
-        const table = this.props._table;
-        if (!table) return;
+				// Track sort state
+				this.sortby;
+				this.sortReverse;
 
-        if (!this._sortby || this.props._reorderable) {
-          this._sorted = [...this._origin];
-          return;
-        }
+				untrack(() => this.sortTable());
+			});
 
-        const column = table.columns[this._sortby];
-        let { sort, value } = column?.options ?? {};
+			$effect(() => {
+				if (this.props._reorderable) return;
 
-        if (!sort || !value) {
-          this._sorted = [...this._origin];
-          return;
-        }
+				// Track dependencies explicitly
+				this.props._filters;
+				const sortedArray = this.sorted;
+				// Track column additions/removals by reading the keys array
+				const columnKeys = Object.keys(table.columns);
+				columnKeys.length;
+				for (const key of columnKeys) {
+					table.columns[key]?.options?.filter;
+					table.columns[key]?.options?.value;
+				}
 
-        if (sort === true) {
-          sort = (a, b) => String(a).localeCompare(String(b));
-        }
+				const filters = untrack(() => {
+					const all = [...(this.props._filters ?? [])] as ((item: T) => boolean)[];
+					for (const key of columnKeys) {
+						const col = table.columns[key];
+						if (!col) continue;
+						const filter = col.options?.filter;
+						const valueOf = col.options?.value;
+						if (filter && valueOf) {
+							all.push((item) => filter(valueOf(item)));
+						}
+					}
+					return all;
+				});
 
-        if (this._sortReverse) {
-          this._sorted = this._origin.toSorted((a, b) => sort(value(b), value(a)));
-        } else {
-          this._sorted = this._origin.toSorted((a, b) => sort(value(a), value(b)));
-        }
-      },
-    },
-    function () {
-      const table = this.props._table;
-      if (!table) return;
-
-      this._origin = this.props._data;
-      this._sorted = [...this._origin];
-      this._filtered = this._sorted;
-
-      $effect(() => {
-        this._origin = this.props._data;
-        if (this.props._reorderable) return;
-        this.props._data;
-        this.props._data.length;
-        this._sortby;
-        this._sortReverse;
-        untrack(() => this.sortTable());
-      });
-
-      $effect(() => {
-        if (this.props._reorderable) return;
-
-        // Track dependencies explicitly
-        this.props._filters;
-        this._sorted;
-        // Track column additions/removals by reading the keys array
-        const columnKeys = Object.keys(table.columns);
-        columnKeys.length;
-        for (const key of columnKeys) {
-          table.columns[key]?.options?.filter;
-          table.columns[key]?.options?.value;
-        }
-
-        const filters = untrack(() => {
-          const all = [...(this.props._filters ?? [])] as ((item: T) => boolean)[];
-          for (const key of columnKeys) {
-            const col = table.columns[key];
-            if (!col) continue;
-            const filter = col.options?.filter;
-            const valueOf = col.options?.value;
-            if (filter && valueOf) {
-              all.push((item) => filter(valueOf(item)));
-            }
-          }
-          return all;
-        });
-
-        this._filtered =
-          filters.length === 0
-            ? this._sorted
-            : this._sorted.filter((value) => filters.every((filter) => filter(value)));
-      });
-    },
-  );
+				untrack(() => {
+					// Always create a new array to avoid shared references
+					this.filtered =
+						filters.length === 0
+							? [...sortedArray]
+							: sortedArray.filter((value) => filters.every((filter) => filter(value)));
+				});
+			});
+		},
+	);

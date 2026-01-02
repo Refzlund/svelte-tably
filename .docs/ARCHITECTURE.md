@@ -213,6 +213,7 @@ Notable routes:
 
 - `/` renders Example1 (full-featured table)
 - `/example2` renders a minimal `auto` + `reorderable` example
+- `/testing` automated test suite with 14 tests covering async load, virtualization, selection, etc.
 - `/issues/19` reproduces context-column rendering issues
 - `/issues/20` reproduces a virtualization unmount race and a filter-loop repro
 - `/issues/fix-new-bugs` contains a “multi repro” page, including sandboxed iframe localStorage errors

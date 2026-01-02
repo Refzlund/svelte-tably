@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte'
 import { sineInOut } from 'svelte/easing'
 import type { EasingFunction } from 'svelte/transition'
-import { getTableContext, type RowCtx } from '../table/table-state.svelte.js'
+import type { RowCtx } from '../table/table-state.svelte.js'
 
 // Minimal interface for what Expandable needs from Table
 export interface ExpandableTableRef {
@@ -16,7 +16,7 @@ type SlideOptions = {
 }
 
 export const ExpandableState = <T>() => $origin({
-	props: $attrs({
+	props: $origin.props({
 		content: undefined as Snippet<[item: T, ctx: RowCtx<T>]> | undefined,
 		slide: undefined as SlideOptions | undefined,
 		click: true as boolean,
@@ -37,13 +37,13 @@ export const ExpandableState = <T>() => $origin({
 	},
 
 	get snippets() {
-		return $derived({
+		return {
 			content: this.props.content
-		})
+		}
 	},
 
 	get options() {
-		return $derived({
+		return {
 			slide: {
 				duration: this.props.slide?.duration ?? 150,
 				easing: this.props.slide?.easing ?? sineInOut
@@ -51,23 +51,25 @@ export const ExpandableState = <T>() => $origin({
 			click: this.props.click ?? true,
 			chevron: this.props.chevron ?? 'hover',
 			multiple: this.props.multiple ?? false
-		})
-	}
-}, function() {
-	// Get table from context or from props (for programmatic usage)
-	const table = this.props._table ?? getTableContext<T>()
-	if (!table) {
-		throw new Error('svelte-tably: Expandable must be associated with a Table')
-	}
+		}
+	},
 
-	table.expandable = this as ExpandableInstance
-	this._cleanup = () => {
-		if (table.expandable === this) {
-			table.expandable = undefined
+	init(tableFromContext?: ExpandableTableRef) {
+		// Get table from argument, props, or context fallback
+		const table = tableFromContext ?? this.props._table
+		if (!table) {
+			throw new Error('svelte-tably: Expandable must be associated with a Table')
+		}
+
+		table.expandable = this as ExpandableInstance
+		this._cleanup = () => {
+			if (table.expandable === this) {
+				table.expandable = undefined
+			}
 		}
 	}
 })
 
 export type ExpandableInstance = ReturnType<ReturnType<typeof ExpandableState>>
-export type ExpandableProps<T = unknown> = $attrs.Of<ReturnType<typeof ExpandableState<T>>>
+export type ExpandableProps<T = unknown> = $origin.Props<ReturnType<typeof ExpandableState<T>>>
 

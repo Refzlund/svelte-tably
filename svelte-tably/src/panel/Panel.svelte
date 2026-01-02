@@ -9,13 +9,19 @@
 -->
 
 <script lang='ts' generics='T'>
-	import { onDestroy } from 'svelte'
+	import { onMount, onDestroy } from 'svelte'
 	import { PanelState, type PanelProps } from './panel-state.svelte.js'
 
 	type $$Props = PanelProps<T>
-	let panel = $attrs.origin(PanelState<T>())
+	let panel = $origin.component(PanelState<T>())
 
-	// Workaround for svelte-origin not calling cleanup on component destroy
+	// Initialize panel on mount (runs once)
+	onMount(() => {
+		if (typeof panel.init === 'function') {
+			panel.init()
+		}
+	})
+
 	onDestroy(() => {
 		if (typeof panel.cleanup === 'function') {
 			panel.cleanup()

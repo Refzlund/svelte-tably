@@ -55,14 +55,14 @@ type SelectOptions<T> = {
 }
 
 export const TableState = <T>() => $origin({
-	props: $attrs({
+	props: $origin.props({
 		id: undefined as string | undefined,
 		/** Class name for the table element */
 		class: undefined as string | undefined,
 		data: [] as T[],
-		selected: $bindable([]) as T[],
+		selected: [] as T[],
 		/** Current visible panel */
-		panel: $bindable(undefined) as string | undefined,
+		panel: undefined as string | undefined,
 		filters: undefined as ((item: T) => boolean)[] | undefined,
 		/**
 		 * **For a reorderable table, the data is mutated when reordered.**
@@ -83,40 +83,45 @@ export const TableState = <T>() => $origin({
 		content: undefined as Snippet<[context: unknown]> | undefined
 	}),
 
-	_cssId: $state(''),
+	_cssId: '',
 	_dataState: $state<DataInstance | undefined>(undefined),
-	_columns: $state<Record<string, ColumnInstance>>({}),
-	_panels: $state<Record<string, PanelInstance>>({}),
+	_columns: {} as Record<string, ColumnInstance>,
+	_panels: {} as Record<string, PanelInstance>,
 	_expandable: $state<ExpandableInstance | undefined>(undefined),
-	_row: $state<RowInstance | undefined>(undefined),
-	_columnWidths: $state<Record<string, number>>({}),
-	_positions: $state<{
-		fixed: string[]
-		sticky: string[]
-		hidden: string[]
-		scroll: string[]
-	}>({
+	_row: undefined as RowInstance | undefined,
+	_columnWidths: {} as Record<string, number>,
+	_positions: {
 		fixed: [],
 		sticky: [],
 		hidden: [],
 		scroll: []
-	}),
-	_positionsState: $state<{
-		fixed: ColumnInstance[]
-		sticky: ColumnInstance[]
-		scroll: ColumnInstance[]
-		hidden: ColumnInstance[]
-	}>({
+	} as {
+		fixed: string[]
+		sticky: string[]
+		hidden: string[]
+		scroll: string[]
+	},
+	_positionsState: $state({
 		fixed: [],
 		sticky: [],
 		scroll: [],
 		hidden: []
+	} as {
+		fixed: ColumnInstance[]
+		sticky: ColumnInstance[]
+		scroll: ColumnInstance[]
+		hidden: ColumnInstance[]
 	}),
+	/**
+	 * Version counter to trigger reactivity when columns change.
+	 * Increment this whenever _positionsState arrays are modified.
+	 */
+	_positionsVersion: $state(0),
 	/**
 	 * Tracks the order in which columns are first declared/registered.
 	 * Used as fallback for positioning when no saved order exists in localStorage.
 	 */
-	_declarationOrder: $state<string[]>([]),
+	_declarationOrder: [] as string[],
 
 	get id() {
 		return this.props!.id
@@ -135,7 +140,7 @@ export const TableState = <T>() => $origin({
 	},
 
 	get data() {
-		return $derived(this._dataState?.current ?? [])
+		return this._dataState?.current ?? []
 	},
 
 	get columns() {
@@ -195,14 +200,14 @@ export const TableState = <T>() => $origin({
 	},
 
 	get options() {
-		return $derived({
+		return {
 			panel: this.props!.panel,
 			filters: this.props!.reorderable ? false : (this.props!.filters ?? []),
 			resizeable: this.props!.resizeable ?? true,
 			reorderable: this.props!.reorderable ?? false,
 			select: this.props!.select ?? false,
 			auto: this.props!.auto ?? false
-		})
+		}
 	},
 
 	add(state: ColumnInstance | PanelInstance) {
@@ -256,6 +261,7 @@ export const TableState = <T>() => $origin({
 				this._positionsState.sticky = this._positionsState.sticky.filter((c) => c && c.id !== key)
 				this._positionsState.scroll = this._positionsState.scroll.filter((c) => c && c.id !== key)
 				this._positionsState.hidden = this._positionsState.hidden.filter((c) => c && c.id !== key)
+				this._positionsVersion++
 			}
 
 			if (column.defaults.sortby && this._dataState && !this._dataState.sortby) {
@@ -278,6 +284,7 @@ export const TableState = <T>() => $origin({
 				|| saved.fixed
 			) {
 				insertByOrder(this._positionsState.fixed, column, this._positions.fixed)
+				this._positionsVersion++
 				return clean
 			}
 
@@ -286,6 +293,7 @@ export const TableState = <T>() => $origin({
 				|| saved.hidden
 			) {
 				insertByOrder(this._positionsState.hidden, column, this._positions.hidden)
+				this._positionsVersion++
 				return clean
 			}
 
@@ -297,6 +305,7 @@ export const TableState = <T>() => $origin({
 			} else {
 				insertByOrder(this._positionsState.scroll, column, this._positions.scroll)
 			}
+			this._positionsVersion++
 
 			return clean
 		}
@@ -314,18 +323,21 @@ export const TableState = <T>() => $origin({
 		return ''
 	}
 }, function() {
-	this._cssId = Array.from({ length: 12 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join('')
-
-	// Create data state
-	const dataState = Data<T>()({
+	// Init callback - runs when origin is created
+	const id = this.props.id
+	this._cssId = id ? `tably-${id}` : `tably-${Math.random().toString(36).slice(2, 11)}`
+	
+	setContext<TableInstance<T>>('svelte-tably', this as TableInstance<T>)
+	
+	// Create data state with bound props (uses $origin.create for proper reactivity)
+	this._dataState = $origin.create(Data<T>, {
 		_table: this,
-		_data: this.props.data,
-		_filters: this.props.filters,
-		_reorderable: this.props.reorderable
+		_data: $origin.bind(this.props.data),
+		_filters: $origin.bind(this.props.filters),
+		_reorderable: $origin.bind(this.props.reorderable)
 	})
-	this._dataState = dataState
-
-	// LocalStorage persistence (browser-only to avoid SSR hydration mismatch)
+	
+	// LocalStorage persistence
 	type SavedPositions = {
 		fixed: string[]
 		sticky: string[]
@@ -355,31 +367,34 @@ export const TableState = <T>() => $origin({
 			// Ignore parse errors
 		}
 	}
-
-	// Save state on changes to localStorage
+	
+	// Save state on changes to localStorage (debounced to avoid infinite loops)
+	let saveTimeout: ReturnType<typeof setTimeout> | null = null
 	$effect(() => {
-		// Tracked: position arrays and column widths
-		// Filter out undefined entries (defensive - shouldn't happen but prevents runtime errors)
-		const currentIds = {
-			fixed: this._positionsState.fixed.filter(Boolean).map(c => c.id),
-			sticky: this._positionsState.sticky.filter(Boolean).map(c => c.id),
-			hidden: this._positionsState.hidden.filter(Boolean).map(c => c.id),
-			scroll: this._positionsState.scroll.filter(Boolean).map(c => c.id)
-		}
+		// Track version counter and widths to know when to save
+		this._positionsVersion
 		const widths = { ...this._columnWidths }
 
 		untrack(() => {
 			if (!storageKey) return
 			if (typeof window === 'undefined') return
-
-			localStorage.setItem(storageKey, JSON.stringify({
-				positions: currentIds,
-				columnWidths: widths
-			}))
+			
+			// Debounce saves to avoid rapid updates
+			if (saveTimeout) clearTimeout(saveTimeout)
+			saveTimeout = setTimeout(() => {
+				const currentIds = {
+					fixed: this._positionsState.fixed.filter(Boolean).map(c => c.id),
+					sticky: this._positionsState.sticky.filter(Boolean).map(c => c.id),
+					hidden: this._positionsState.hidden.filter(Boolean).map(c => c.id),
+					scroll: this._positionsState.scroll.filter(Boolean).map(c => c.id)
+				}
+				localStorage.setItem(storageKey, JSON.stringify({
+					positions: currentIds,
+					columnWidths: widths
+				}))
+			}, 100)
 		})
 	})
-
-	setContext('svelte-tably', this)
 })
 
 export function getTableContext<_T>() {
@@ -450,4 +465,4 @@ export interface TableInstance<T = unknown> {
 	toCSV(options?: CSVOptions<T>): Promise<string>
 }
 
-export type TableProps<T = unknown> = $attrs.Of<ReturnType<typeof TableState<T>>>
+export type TableProps<T = unknown> = $origin.Props<ReturnType<typeof TableState<T>>>

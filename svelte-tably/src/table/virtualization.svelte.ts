@@ -23,19 +23,32 @@ export class Virtualization<T> {
 	#renderItemLength = $derived(Math.ceil(Math.max(30, (this.viewport.height / this.#heightPerItem) * 2)))
 
 	constructor(table: TableInstance<T>) {
+		/**
+		 * Version counter that increments when a tick cycle completes.
+		 * Used in combination with `ticked` to defer virtualization calculations
+		 * until after DOM updates have flushed. Incrementing the version ensures
+		 * effects re-run even if ticked was already true from a previous cycle.
+		 */
+		let tickVersion = $state(0)
 		let ticked = $state(false)
 		$effect.pre(() => {
 			if (!table.dataState) return
-			table.dataState.origin
+			// Track current instead of origin - current is what we actually render
+			table.dataState.current
 			untrack(() => {
 				ticked = false
-				requestAnimationFrame(() => ticked = true)
+				requestAnimationFrame(() => {
+					ticked = true
+					tickVersion++
+				})
 			})
 		})
 
 		let measureRaf = 0
 		let measureRun = 0
 		$effect(() => {
+			// Track version BEFORE early returns to ensure effect re-runs when tick completes
+			void tickVersion
 			if (!ticked) return
 			if (!table.dataState) return
 			table.dataState.current
@@ -85,6 +98,8 @@ export class Virtualization<T> {
 
 		let virtualRaf = 0
 		$effect(() => {
+			// Track version BEFORE early returns to ensure effect re-runs when tick completes
+			void tickVersion
 			if (!ticked) return
 			if (!table.dataState) return
 			this.scrollTop
@@ -116,6 +131,8 @@ export class Virtualization<T> {
 		})
 
 		$effect(() => {
+			// Track version BEFORE early returns to ensure effect re-runs when tick completes
+			void tickVersion
 			if (!ticked) return
 			if (!table.dataState) return
 			table.dataState.sortReverse
