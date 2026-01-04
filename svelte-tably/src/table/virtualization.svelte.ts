@@ -33,8 +33,9 @@ export class Virtualization<T> {
 		let ticked = $state(false)
 		$effect.pre(() => {
 			if (!table.dataState) return
-			// Track current instead of origin - current is what we actually render
+			// Track current array - both reference AND length for mutation tracking
 			table.dataState.current
+			table.dataState.current.length
 			untrack(() => {
 				ticked = false
 				requestAnimationFrame(() => {
@@ -51,7 +52,9 @@ export class Virtualization<T> {
 			void tickVersion
 			if (!ticked) return
 			if (!table.dataState) return
+			// Track current array - both reference AND length for mutation tracking
 			table.dataState.current
+			table.dataState.current.length
 			this.viewport.element
 			this.viewport.height
 
@@ -141,8 +144,9 @@ export class Virtualization<T> {
 			this.#virtualTop
 			this.viewport.height
 			this.#renderItemLength
-			table.dataState.current.length
+			// Track current array - both reference AND length for mutation tracking
 			table.dataState.current
+			table.dataState.current.length
 			untrack(() => {
 				const heightPerItem = this.#heightPerItem || 8
 				this.#topIndex = Math.round(this.#virtualTop / heightPerItem || 0)
