@@ -125,7 +125,7 @@ export const Data = <T>() =>
 				}
 			},
 		},
-		function() {
+		function () {
 			const table = this.props._table
 			if (!table) return
 
@@ -151,9 +151,21 @@ export const Data = <T>() =>
 			$effect(() => {
 				if (this.props._reorderable) return
 
+				// A value that absorbs any property access or method call without throwing,
+				// so that reactive $state reads inside filter closures are tracked by this effect.
+				// Returns itself for all property access and function calls, but converts to
+				// a primitive (empty string / 0 / false) when coerced via operators like < > == etc.
+				const probe: any = new Proxy(() => probe, {
+					get(_, key) {
+						if (key === Symbol.toPrimitive) return () => ''
+						return probe
+					}
+				})
+
 				// Track dependencies explicitly - both reference AND length for mutation tracking
 				this.props._filters
 				this.props._filters?.length
+				this.props._filters?.forEach(f => f(probe))
 
 				const sortedArray = this.sorted
 				sortedArray.length
@@ -162,7 +174,7 @@ export const Data = <T>() =>
 				const columnKeys = Object.keys(table.columns)
 				columnKeys.length
 				for (const key of columnKeys) {
-					table.columns[key]?.options?.filter
+					table.columns[key]?.options?.filter?.(probe)
 					table.columns[key]?.options?.value
 				}
 
