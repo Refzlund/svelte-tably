@@ -1,11 +1,11 @@
-import { getContext, setContext, untrack, type Snippet } from 'svelte'
-import type { ColumnInstance, RowColumnCtx } from '../column/column-state.svelte.js'
+import { getContext, setContext, type Snippet, type SvelteComponent, type ComponentConstructorOptions } from 'svelte'
+import type { ColumnInstance, RowColumnCtx, ColumnProps } from '../column/column-state.svelte.js'
 import { Data, type DataInstance } from './data.svelte.js'
 import type { ItemState } from 'runic-reorder'
 import type { CSVOptions } from './csv.js'
-import type { PanelInstance } from '../panel/panel-state.svelte.js'
-import type { ExpandableInstance } from '../expandable/expandable-state.svelte.js'
-import type { RowInstance } from '../row/row-state.svelte.js'
+import type { PanelInstance, PanelProps } from '../panel/panel-state.svelte.js'
+import type { ExpandableInstance, ExpandableProps } from '../expandable/expandable-state.svelte.js'
+import type { RowInstance, RowProps } from '../row/row-state.svelte.js'
 
 export type HeaderSelectCtx<T = unknown> = {
 	isSelected: boolean
@@ -54,15 +54,69 @@ type SelectOptions<T> = {
 	rowSnippet?: Snippet<[context: RowSelectCtx<T>]>
 }
 
+/**
+ * Column component type with proper generic inference.
+ * T is fixed to the table's Item type, V is inferred from the value prop.
+ */
+type ColumnComponentType<T> = {
+	<V>(internal: unknown, props: ColumnProps<T, V>): void
+	new <V>(options: ComponentConstructorOptions<ColumnProps<T, V>>): SvelteComponent<ColumnProps<T, V>>
+}
+
+/**
+ * Panel component type.
+ */
+type PanelComponentType<T> = {
+	(internal: unknown, props: PanelProps<T>): void
+	new(options: ComponentConstructorOptions<PanelProps<T>>): SvelteComponent<PanelProps<T>>
+}
+
+/**
+ * Expandable component type.
+ */
+type ExpandableComponentType<T> = {
+	(internal: unknown, props: ExpandableProps<T>): void
+	new(options: ComponentConstructorOptions<ExpandableProps<T>>): SvelteComponent<ExpandableProps<T>>
+}
+
+/**
+ * Row component type.
+ */
+type RowComponentType<T> = {
+	(internal: unknown, props: RowProps<T>): void
+	new(options: ComponentConstructorOptions<RowProps<T>>): SvelteComponent<RowProps<T>>
+}
+
+export type ContentCtx<Item = unknown> = {
+	/** Column component - use to define table columns */
+	readonly Column: ColumnComponentType<Item>
+	/** Panel component - use to define side panels */
+	readonly Panel: PanelComponentType<Item>
+	/** Expandable component - use to define expandable row content */
+	readonly Expandable: ExpandableComponentType<Item>
+	/** Row component - use to configure row behavior and context menus */
+	readonly Row: RowComponentType<Item>
+	/** The table state instance */
+	readonly table: TableInstance<Item>
+	/** Set of hidden column IDs - use for reactive visibility checks */
+	readonly hiddenIds: ReadonlySet<string>
+	/** Sticky columns array - mutable for reordering */
+	readonly sticky: ColumnInstance[]
+	/** Scroll columns array - mutable for reordering */
+	readonly scroll: ColumnInstance[]
+}
+
+export type ContentSnippet<Item = unknown> = Snippet<[context: ContentCtx<Item>]>
+
 export const TableState = <T>() => $origin({
 	props: $origin.props({
 		id: undefined as string | undefined,
 		/** Class name for the table element */
 		class: undefined as string | undefined,
-		data: [] as T[],
-		selected: [] as T[],
+		data: $bindable([] as T[]),
+		selected: $bindable([] as T[]),
 		/** Current visible panel */
-		panel: undefined as string | undefined,
+		panel: $bindable(undefined as string | undefined),
 		filters: undefined as ((item: T) => boolean)[] | undefined,
 		/**
 		 * **For a reorderable table, the data is mutated when reordered.**
@@ -80,7 +134,7 @@ export const TableState = <T>() => $origin({
 		/** Create missing columns automatically. */
 		auto: false as boolean,
 		/** Content snippet for rendering Column/Panel/Expandable/Row components */
-		content: undefined as Snippet<[context: unknown]> | undefined
+		content: undefined as ContentSnippet<T> | undefined
 	}),
 
 	_cssId: '',
@@ -89,7 +143,9 @@ export const TableState = <T>() => $origin({
 	_panels: {} as Record<string, PanelInstance>,
 	_expandable: $state<ExpandableInstance | undefined>(undefined),
 	_row: undefined as RowInstance | undefined,
-	_columnWidths: {} as Record<string, number>,
+	_columnWidths: $state({} as Record<string, number>),
+	/** Callback to notify Table.svelte when state changes (for persistence) */
+	_saveCallback: undefined as (() => void) | undefined,
 	_positions: {
 		fixed: [],
 		sticky: [],
@@ -117,6 +173,10 @@ export const TableState = <T>() => $origin({
 	 * Increment this whenever _positionsState arrays are modified.
 	 */
 	_positionsVersion: $state(0),
+	/**
+	 * Version counter for column widths reactivity.
+	 */
+	_columnWidthsVersion: $state(0),
 	/**
 	 * Tracks the order in which columns are first declared/registered.
 	 * Used as fallback for positioning when no saved order exists in localStorage.
@@ -197,6 +257,7 @@ export const TableState = <T>() => $origin({
 
 	set columnWidths(value: Record<string, number>) {
 		this._columnWidths = value
+		this._columnWidthsVersion++
 	},
 
 	get options() {
@@ -277,26 +338,22 @@ export const TableState = <T>() => $origin({
 			const isSaved = Object.values(saved).some(v => v)
 
 			// Determine which position array to add the column to
-			// Priority: fixed > hidden > sticky > scroll
-			// A column should only be in ONE position array at a time
+			// Priority: fixed > sticky > scroll
+			// Hidden is now just a visibility flag, not a position
 			if (
 				(!isSaved && column.options.fixed)
 				|| saved.fixed
 			) {
 				insertByOrder(this._positionsState.fixed, column, this._positions.fixed)
+				// Also add to hidden if it should start hidden
+				if (saved.hidden || (!isSaved && column.defaults.show === false)) {
+					this._positionsState.hidden = [...this._positionsState.hidden, column]
+				}
 				this._positionsVersion++
 				return clean
 			}
 
-			if (
-				(!isSaved && column.defaults.show === false)
-				|| saved.hidden
-			) {
-				insertByOrder(this._positionsState.hidden, column, this._positions.hidden)
-				this._positionsVersion++
-				return clean
-			}
-
+			// Add to sticky or scroll based on defaults/saved position
 			if (
 				(!isSaved && column.defaults.sticky)
 				|| saved.sticky
@@ -305,6 +362,12 @@ export const TableState = <T>() => $origin({
 			} else {
 				insertByOrder(this._positionsState.scroll, column, this._positions.scroll)
 			}
+
+			// Also add to hidden if it should start hidden
+			if (saved.hidden || (!isSaved && column.defaults.show === false)) {
+				this._positionsState.hidden = [...this._positionsState.hidden, column]
+			}
+
 			this._positionsVersion++
 
 			return clean
@@ -322,13 +385,13 @@ export const TableState = <T>() => $origin({
 	async toCSV(_options: CSVOptions<T> = {}): Promise<string> {
 		return ''
 	}
-}, function() {
+}, function () {
 	// Init callback - runs when origin is created
 	const id = this.props.id
 	this._cssId = id ? `tably-${id}` : `tably-${Math.random().toString(36).slice(2, 11)}`
-	
+
 	setContext<TableInstance<T>>('svelte-tably', this as TableInstance<T>)
-	
+
 	// Create data state with bound props (uses $origin.create for proper reactivity)
 	this._dataState = $origin.create(Data<T>, {
 		_table: this,
@@ -336,7 +399,7 @@ export const TableState = <T>() => $origin({
 		_filters: $origin.bind(this.props.filters),
 		_reorderable: $origin.bind(this.props.reorderable)
 	})
-	
+
 	// LocalStorage persistence
 	type SavedPositions = {
 		fixed: string[]
@@ -367,34 +430,9 @@ export const TableState = <T>() => $origin({
 			// Ignore parse errors
 		}
 	}
-	
-	// Save state on changes to localStorage (debounced to avoid infinite loops)
-	let saveTimeout: ReturnType<typeof setTimeout> | null = null
-	$effect(() => {
-		// Track version counter and widths to know when to save
-		this._positionsVersion
-		const widths = { ...this._columnWidths }
 
-		untrack(() => {
-			if (!storageKey) return
-			if (typeof window === 'undefined') return
-			
-			// Debounce saves to avoid rapid updates
-			if (saveTimeout) clearTimeout(saveTimeout)
-			saveTimeout = setTimeout(() => {
-				const currentIds = {
-					fixed: this._positionsState.fixed.filter(Boolean).map(c => c.id),
-					sticky: this._positionsState.sticky.filter(Boolean).map(c => c.id),
-					hidden: this._positionsState.hidden.filter(Boolean).map(c => c.id),
-					scroll: this._positionsState.scroll.filter(Boolean).map(c => c.id)
-				}
-				localStorage.setItem(storageKey, JSON.stringify({
-					positions: currentIds,
-					columnWidths: widths
-				}))
-			}, 100)
-		})
-	})
+	// Note: Save logic is handled in Table.svelte where local $state works properly
+	// (svelte-origin strips $state() from origin definitions, so effects here can't track changes)
 })
 
 export function getTableContext<_T>() {
@@ -429,6 +467,7 @@ interface TableColumnRef {
 		readonly row: Snippet<[item: unknown, ctx: unknown]> | undefined
 		readonly statusbar: Snippet<[ctx: unknown]> | undefined
 	}
+	readonly isHidden: boolean
 	toggleVisiblity(): void
 }
 
@@ -453,6 +492,19 @@ export interface TableInstance<T = unknown> {
 		hidden: TableColumnRef[]
 	}
 	columnWidths: Record<string, number>
+	/** Version counter for column widths reactivity */
+	_columnWidthsVersion: number
+	/** Callback for origins to notify when state changes (for persistence) */
+	_saveCallback: (() => void) | undefined
+	/** Internal positions state for reactivity */
+	_positionsState: {
+		fixed: TableColumnRef[]
+		sticky: TableColumnRef[]
+		scroll: TableColumnRef[]
+		hidden: TableColumnRef[]
+	}
+	/** Version counter for positions reactivity */
+	_positionsVersion: number
 	readonly options: {
 		panel: string | undefined
 		filters: ((item: T) => boolean)[] | false

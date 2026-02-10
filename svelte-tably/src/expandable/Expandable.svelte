@@ -18,12 +18,10 @@
 
 -->
 
-<script lang='ts'>
+<script lang='ts' generics='T'>
 	import { onDestroy } from 'svelte'
 	import { ExpandableState, type ExpandableProps } from './expandable-state.svelte.js'
 	import { getTableContext } from '../table/table-state.svelte.js'
-
-	type T = $$Generic
 
 	type $$Props = ExpandableProps<T>
 	let expandable = $origin.component(ExpandableState<T>())
