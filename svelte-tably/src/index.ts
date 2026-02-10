@@ -1,16 +1,4 @@
 import Table from './table/Table.svelte'
-import type { TableInstance, TableProps } from './table/table-state.svelte.js'
-import type {
-	ContentCtx as TableContentCtx,
-	ContentSnippet as TableContentSnippet
-} from './table/Table.svelte'
-
-namespace Table {
-	export type State<T = unknown> = TableInstance<T>
-	export type Props<T = unknown> = TableProps<T>
-	export type ContentCtx<T = unknown> = TableContentCtx<T>
-	export type ContentSnippet<T = unknown> = TableContentSnippet<T>
-}
 
 export default Table
 
@@ -33,7 +21,7 @@ export type {
 	TableInstance as TableState, // backwards compat alias
 	TableProps
 } from './table/table-state.svelte.js'
-export type { ContentCtx, ContentSnippet } from './table/Table.svelte'
+export type { ContentCtx, ContentSnippet } from './table/table-state.svelte.js'
 export type {
 	RowInstance,
 	RowInstance as RowState, // backwards compat alias

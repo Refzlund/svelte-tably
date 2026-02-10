@@ -24,12 +24,9 @@
 	import { snippetLiteral } from '../utility.svelte.js'
 </script>
 
-<script lang='ts'>
+<script lang='ts' generics='T, V'>
 	import { onMount, onDestroy, untrack } from 'svelte'
 	import { ColumnState, type ColumnProps } from './column-state.svelte.js'
-
-	type T = $$Generic
-	type V = $$Generic
 
 	type $$Props = ColumnProps<T, V>
 	let column = $origin.component(ColumnState<T, V>())

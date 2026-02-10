@@ -17,63 +17,19 @@
 		type RowCtx,
 		type RowSelectCtx,
 		type TableInstance,
-		type TableProps
+		type TableProps,
+		type ContentCtx,
+		type ContentSnippet
 	} from './table-state.svelte.js'
 	import type { ColumnProps } from '../column/column-state.svelte.js'
 	import type { PanelProps } from '../panel/panel-state.svelte.js'
 	import type { ExpandableProps } from '../expandable/expandable-state.svelte.js'
 	import type { RowProps } from '../row/row-state.svelte.js'
 
-	/**
-	 * Column component type with proper generic inference.
-	 * T is fixed to the table's Item type, V is inferred from the value prop.
-	 */
-	type ColumnComponentType<T> = {
-		<V>(internal: unknown, props: ColumnProps<T, V>): void
-		new <V>(options: import('svelte').ComponentConstructorOptions<ColumnProps<T, V>>): import('svelte').SvelteComponent<ColumnProps<T, V>>
-	}
-
-	/**
-	 * Panel component type.
-	 */
-	type PanelComponentType<T> = {
-		(internal: unknown, props: PanelProps<T>): void
-		new (options: import('svelte').ComponentConstructorOptions<PanelProps<T>>): import('svelte').SvelteComponent<PanelProps<T>>
-	}
-
-	/**
-	 * Expandable component type.
-	 */
-	type ExpandableComponentType<T> = {
-		(internal: unknown, props: ExpandableProps<T>): void
-		new (options: import('svelte').ComponentConstructorOptions<ExpandableProps<T>>): import('svelte').SvelteComponent<ExpandableProps<T>>
-	}
-
-	/**
-	 * Row component type.
-	 */
-	type RowComponentType<T> = {
-		(internal: unknown, props: RowProps<T>): void
-		new (options: import('svelte').ComponentConstructorOptions<RowProps<T>>): import('svelte').SvelteComponent<RowProps<T>>
-	}
-
-	export type ContentCtx<Item = unknown> = {
-		/** Column component - use to define table columns */
-		readonly Column: ColumnComponentType<Item>
-		/** Panel component - use to define side panels */
-		readonly Panel: PanelComponentType<Item>
-		/** Expandable component - use to define expandable row content */
-		readonly Expandable: ExpandableComponentType<Item>
-		/** Row component - use to configure row behavior and context menus */
-		readonly Row: RowComponentType<Item>
-		/** The table state instance */
-		readonly table: TableInstance<Item>
-	}
-
-	export type ContentSnippet<Item = unknown> = Snippet<[context: ContentCtx<Item>]>
+	export type { ContentCtx, ContentSnippet }
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="T">
 	import { fly } from 'svelte/transition'
 	import { sineInOut } from 'svelte/easing'
 	import reorder, { type ItemState } from 'runic-reorder'
@@ -89,11 +45,8 @@
 	import Expandable from '../expandable/Expandable.svelte'
 	import Row from '../row/Row.svelte'
 
-	type T = $$Generic
-	type $$Props = TableProps<T>
-
 	let tableState = $origin.component(TableState<T>())
-	const table = tableState as TableInstance<T>
+	const table = tableState
 	
 	// Note: init() is called automatically by svelte-origin via the init callback
 	
@@ -143,24 +96,46 @@
 	const isColumn = (value: unknown): value is ColumnType =>
 		value != null && typeof value === 'object' && 'defaults' in value && 'snippets' in value
 	
-	// Use the version counter to trigger reactivity
-	// (svelte-origin strips $state() from origin definitions, so we use a version counter)
+	/** Local version counter to track position changes for reactivity */
+	let positionVersion = $state(0)
+
+	// Set up callback for origin to notify us when positions change
+	// Use $effect to ensure callback is set after component initialization
+	$effect(() => {
+		table._saveCallback = () => positionVersion++
+	})
+
+	// Use local version counter to trigger reactivity
+	// (svelte-origin strips $state() from origin definitions, so we use local $state)
 	const fixed = $derived.by(() => {
-		table._positionsVersion
+		void positionVersion // Force dependency on positionVersion
 		return table._positionsState.fixed.filter(isColumn)
 	})
 	const hidden = $derived.by(() => {
-		table._positionsVersion
+		void positionVersion
 		return table._positionsState.hidden.filter(isColumn)
 	})
+	const hiddenIds = $derived(new Set(hidden.map(c => c.id)))
 	const notHidden = (column: ColumnType | undefined) =>
-		!!column && !table._positionsState.hidden.includes(column)
+		!!column && !hiddenIds.has(column.id)
+	
+	// Reactive unfiltered arrays for Panel UI (shows all columns regardless of visibility)
+	const stickyAll = $derived.by(() => {
+		void positionVersion
+		return table._positionsState.sticky.filter(isColumn)
+	})
+	const scrollAll = $derived.by(() => {
+		void positionVersion
+		return table._positionsState.scroll.filter(isColumn)
+	})
+	
+	// Filtered arrays for table rendering (excludes hidden)
 	const sticky = $derived.by(() => {
-		table._positionsVersion
+		void positionVersion
 		return table._positionsState.sticky.filter(notHidden)
 	})
 	const scrolled = $derived.by(() => {
-		table._positionsVersion
+		void positionVersion
 		return table._positionsState.scroll.filter(notHidden)
 	})
 	const columns = $derived([...fixed, ...sticky, ...scrolled])
@@ -190,6 +165,39 @@
 
 	const getWidth = (key: string, def: number = 150) =>
 		table.columnWidths[key] ??= table.columns[key]?.defaults.width ?? def
+
+	/** Local version counter to force style recalculation on width changes */
+	let widthVersion = $state(0)
+
+	// Save state to localStorage when widths or positions change
+	let saveTimeout: ReturnType<typeof setTimeout> | null = null
+	$effect(() => {
+		// Track local version counters for reactivity
+		widthVersion
+		positionVersion
+
+		const storageKey = table.id ? `svelte-tably:${table.id}` : null
+		if (!storageKey) return
+		if (typeof window === 'undefined') return
+		
+		const widths = { ...table.columnWidths }
+		
+		// Debounce saves to avoid rapid updates
+		if (saveTimeout) clearTimeout(saveTimeout)
+		saveTimeout = setTimeout(() => {
+			const currentIds = {
+				fixed: table._positionsState.fixed.filter(Boolean).map(c => c.id),
+				sticky: table._positionsState.sticky.filter(Boolean).map(c => c.id),
+				hidden: table._positionsState.hidden.filter(Boolean).map(c => c.id),
+				scroll: table._positionsState.scroll.filter(Boolean).map(c => c.id)
+			}
+			const saveData = {
+				positions: currentIds,
+				columnWidths: widths
+			}
+			localStorage.setItem(storageKey, JSON.stringify(saveData))
+		}, 100)
+	})
 
 	const measureContextCellWidth = (cell: HTMLElement | null) => {
 		if (!cell) return 0
@@ -255,6 +263,9 @@
 			return
 		}
 
+		// Read local version counter to create reactivity dependency
+		widthVersion
+
 		const context = table.row?.snippets.context ? ' var(--tably-context-width)' : ''
 		
 		// Calculate total fixed width of all columns
@@ -281,8 +292,9 @@
 				.join(' ') + context
 
 		// Header/footer template includes scrollbar spacer column at the end
-		// This ensures header content width matches body content width for proper scroll sync
-		const headerTemplateColumns = templateColumns + ' var(--scrollbar)'
+		// This ensures header content width matches body content width for proper alignment
+		// (body has scrollbar-gutter: stable which reserves space for the scrollbar)
+		const headerTemplateColumns = templateColumns
 
 		const theadTemplateColumns = `
 	[data-svelte-tably="${table.cssId}"] > thead > tr,
@@ -341,6 +353,9 @@
 			const width = parseFloat(node.style.width)
 			if (width === table.columnWidths[key]) return
 			table.columnWidths[key] = width
+			// Trigger local style recalculation + localStorage persistence
+			widthVersion++
+			table._columnWidthsVersion++
 			if (!mouseup) {
 				mouseup = true
 				window.addEventListener(
@@ -1112,6 +1127,15 @@
 	Row,
 	get table() {
 		return table
+	},
+	get hiddenIds() {
+		return hiddenIds
+	},
+	get sticky() {
+		return table._positionsState.sticky
+	},
+	get scroll() {
+		return table._positionsState.scroll
 	}
 })}
 
@@ -1229,7 +1253,17 @@
 		overflow: hidden;
 		width: 100%;
 		background-color: var(--tably-bg);
-		border-bottom: 1px solid var(--tably-border-grid);
+		position: relative;
+
+		&::after {
+			content: '';
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 1px;
+			background-color: var(--tably-border-grid);
+		}
 	}
 
 	.tably-expandable-content {
@@ -1416,13 +1450,11 @@
 		z-index: 2;
 		overflow: hidden;
 		min-width: 0;
-		/* Scrollbar width is handled by a grid column (var(--scrollbar)) in grid-template-columns */
+		padding-right: var(--scrollbar, 0px);
+		/* Scrollbar padding to align context column with body */
 		border-bottom: 1px solid var(--tably-border);
 	}
 
-	.tably-headers > tr > .tably-column {
-		width: auto !important;
-	}
 	.tably-headers > tr > .tably-column:not(:first-child) {
 		border-left: 1px solid var(--tably-border-grid);
 	}
@@ -1440,6 +1472,7 @@
 
 		grid-area: rows;
 		scrollbar-width: thin;
+		scrollbar-gutter: stable;
 		overflow-x: auto;
 		overflow-y: scroll;
 	}
@@ -1460,7 +1493,8 @@
 		overflow: hidden;
 		background-color: var(--tably-statusbar);
 		min-width: 0;
-		/* Scrollbar width is handled by a grid column (var(--scrollbar)) in grid-template-columns */
+		padding-right: var(--scrollbar, 0px);
+		/* Scrollbar padding to align context column with body */
 	}
 
 	.tably-statusbar > tr > .tably-column {
@@ -1516,6 +1550,11 @@
 
 	.tably-row > .context-col {
 		background-color: var(--tably-bg);
+		border-left: none;
+	}
+
+	.tably-row:hover > .context-col:not(.tably-hidden) {
+		border-left: 1px solid var(--tably-border);
 	}
 
 	.tably-row > .context-col.tably-hidden {

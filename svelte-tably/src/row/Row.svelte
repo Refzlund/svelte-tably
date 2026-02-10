@@ -8,12 +8,10 @@
 
 -->
 
-<script lang='ts'>
+<script lang='ts' generics='T'>
 	import { onDestroy } from 'svelte'
 	import { RowState, type RowProps } from './row-state.svelte.js'
 	import { getTableContext } from '../table/table-state.svelte.js'
-
-	type T = $$Generic
 
 	type $$Props = RowProps<T>
 	let row = $origin.component(RowState<T>())

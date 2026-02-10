@@ -5,6 +5,7 @@ import { getDefaultHeader } from "./Column.svelte"
 // Self-reference type for arrays (defined before ColumnTableRef)
 export interface ColumnSelfRef {
 	readonly id: string
+	readonly isHidden: boolean
 	toggleVisiblity(): void
 }
 
@@ -17,6 +18,17 @@ export interface ColumnTableRef {
 	positions: {
 		hidden: ColumnSelfRef[]
 	}
+	/** Internal: position state arrays for direct manipulation */
+	_positionsState: {
+		fixed: ColumnSelfRef[]
+		sticky: ColumnSelfRef[]
+		scroll: ColumnSelfRef[]
+		hidden: ColumnSelfRef[]
+	}
+	/** Internal: version counter for reactivity */
+	_positionsVersion: number
+	/** Internal: callback to notify Table.svelte of changes */
+	_saveCallback?: () => void
 	add(column: unknown): (() => void) | undefined
 }
 
@@ -191,12 +203,34 @@ export const ColumnState = <T, V = unknown>() => $origin({
 		}
 	},
 
+	/** Whether this column is currently hidden */
+	get isHidden() {
+		const table = this._table
+		if (!table) return false
+		// Use ID comparison instead of reference equality (proxies break includes())
+		return table._positionsState.hidden.some(c => c.id === this.id)
+	},
+
 	toggleVisiblity() {
 		const table = this._table
 		if (!table) return
-		const index = table.positions.hidden.indexOf(this as ColumnSelfRef)
-		if (index > -1) table.positions.hidden.splice(index, 1)
-		else table.positions.hidden.push(this as ColumnSelfRef)
+
+		const id = this.id
+		const pos = table._positionsState
+		const isHidden = pos.hidden.some(c => c.id === id)
+
+		if (isHidden) {
+			// Currently hidden -> unhide: just remove from hidden array
+			pos.hidden = pos.hidden.filter(c => c.id !== id)
+		} else {
+			// Currently visible -> hide: just add to hidden array
+			// Column stays in sticky/scroll - hidden is just a visibility flag
+			pos.hidden = [...pos.hidden, this as ColumnSelfRef]
+		}
+
+		// Trigger reactivity
+		table._positionsVersion++
+		table._saveCallback?.()
 	},
 
 	/** Stored cleanup function */
@@ -254,6 +288,7 @@ export interface ColumnInstance<T = unknown, V = unknown> {
 		padHeader: boolean
 		padStatusbar: boolean
 	}
+	readonly isHidden: boolean
 	toggleVisiblity(): void
 }
 

@@ -46,10 +46,8 @@
 
 	let filters = $state([]) as ((item: (typeof data)[number]) => boolean)[]
 
-	type TableElement = {
-		toCSV: (options?: any) => Promise<string>
-	}
-	let tableElement = $state() as TableElement | undefined
+	// svelte-origin DTS doesn't expose component exports — using any until fixed
+	let tableElement: any = $state()
 
 	let edit = $state({}) as ReturnType<typeof person>
 </script>
@@ -61,7 +59,7 @@
 		onclick={() => 
 			tableElement?.toCSV({
 				semicolon: true
-			})?.then((v) => download('table.csv', v))
+			})?.then((v: string) => download('table.csv', v))
 		}
 	> Get CSV </button>
 	<button
@@ -70,7 +68,7 @@
 				semicolon: true,
 				filters: [(c: (typeof data)[number]) => c.email.endsWith('@gmail.com')],
 				columns: ['name', 'email'],
-			})?.then((v) => download('table.csv', v))
+			})?.then((v: string) => download('table.csv', v))
 		}
 	> Get CSV (gmail only) </button>
 	<button onclick={() => (panel = panel ? undefined : 'columns')}>Toggle panel</button>
@@ -105,10 +103,10 @@
 		bind:this={tableElement}
 		{data}
 		{filters}
-		{panel}
+		bind:panel
 		select={selectable}
 	>
-		{#snippet content({ Column, Panel, Expandable, Row, table })}
+		{#snippet content({ Column, Panel, Expandable, Row, table, hiddenIds, sticky, scroll })}
 			<Column
 				id="id"
 				sticky
@@ -226,10 +224,10 @@
 						>
 							<span use:itemState.handle style="display: flex; align-items: center; gap: .5rem;">
 								<Icon icon="handle" />
-								{@render column.snippets.title()}
+								{@render column.snippets.title?.()}
 							</span>
 							<button class="visible" onclick={() => column.toggleVisiblity()}>
-								{#if table.positions.hidden.includes(column)}
+								{#if hiddenIds.has(column.id)}
 									<Icon icon="eye-closed" />
 								{:else}
 									<Icon icon="eye" />
@@ -246,13 +244,13 @@
 							<div use:area={{ axis: 'y' }} style="padding-bottom: 1rem;">
 								<h4 style="margin: .25rem 0">Sticky</h4>
 								<div>
-									{@render area(table.positions.sticky)}
+									{@render area(sticky)}
 								</div>
 							</div>
 							<div use:area={{ axis: 'y' }}>
 								<h4 style="margin: .0 0 .25rem 0">Scroll</h4>
 								<div>
-									{@render area(table.positions.scroll)}
+									{@render area(scroll)}
 								</div>
 							</div>
 						</div>
