@@ -1,5 +1,31 @@
 # svelte-tably
 
+## 1.6.0
+
+### Minor Changes
+
+- feat: migrate components to Svelte 5 generics attribute ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+### Patch Changes
+
+- refactor: clean up index exports and remove Table namespace ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- fix: use ID comparison for column visibility instead of reference equality ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- chore: bump svelte and devDependency versions ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- fix: filter reactivity ([#38](https://github.com/Refzlund/svelte-tably/pull/38))
+
+- refactor: move ContentCtx and ContentSnippet types to table-state module ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- fix: header and statusbar scroll alignment with scrollbar-gutter ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- fix: table state reactivity and localStorage persistence ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- fix: expandable row border rendering ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
+- feat: add generated TypeScript declarations for svelte-origin components ([#36](https://github.com/Refzlund/svelte-tably/pull/36))
+
 ## 1.5.4
 
 ### Patch Changes
