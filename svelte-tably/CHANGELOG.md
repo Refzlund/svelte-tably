@@ -1,5 +1,13 @@
 # svelte-tably
 
+## 1.6.1
+
+### Patch Changes
+
+- fix: missing thunk ([#39](https://github.com/Refzlund/svelte-tably/pull/39))
+
+- fix: missing types ([#39](https://github.com/Refzlund/svelte-tably/pull/39))
+
 ## 1.6.0
 
 ### Minor Changes
