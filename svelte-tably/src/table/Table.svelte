@@ -46,7 +46,7 @@
 	import Row from '../row/Row.svelte'
 
 	let tableState = $origin.component(TableState<T>())
-	const table = tableState
+	const table: TableInstance<T> = tableState as any
 	
 	// Note: init() is called automatically by svelte-origin via the init callback
 	
@@ -1121,10 +1121,10 @@
 {/if}
 
 {@render tableState.props.content?.({
-	Column,
-	Panel,
-	Expandable,
-	Row,
+	Column: Column as any,
+	Panel: Panel as any,
+	Expandable: Expandable as any,
+	Row: Row as any,
 	get table() {
 		return table
 	},
@@ -1132,10 +1132,10 @@
 		return hiddenIds
 	},
 	get sticky() {
-		return table._positionsState.sticky
+		return table._positionsState.sticky as any
 	},
 	get scroll() {
-		return table._positionsState.scroll
+		return table._positionsState.scroll as any
 	}
 })}
 

@@ -93,15 +93,15 @@ export const RowState = <T>() => $origin({
 			throw new Error('svelte-tably: Row must be associated with a Table')
 		}
 
-		table.row = this as RowInstance
+		table.row = this as unknown as RowInstance
 		this._cleanup = () => {
-			if (table.row === this) {
+			if ((table.row as unknown) === (this as unknown)) {
 				table.row = undefined
 			}
 		}
 	}
 })
 
-export type RowInstance = ReturnType<ReturnType<typeof RowState>>
+export type RowInstance = $origin.Of<ReturnType<typeof RowState>>
 export type RowProps<T = unknown> = $origin.Props<ReturnType<typeof RowState<T>>>
 

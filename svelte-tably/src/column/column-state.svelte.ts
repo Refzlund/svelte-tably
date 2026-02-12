@@ -1,6 +1,12 @@
-import type { Snippet } from "svelte"
+import { createRawSnippet, type Snippet } from "svelte"
 import { getTableContext, type RowCtx } from "../table/table-state.svelte.js"
-import { getDefaultHeader } from "./Column.svelte"
+
+/** Creates a default header snippet that displays the title string */
+export function getDefaultHeader<T>(title: string): Snippet<[ctx: HeaderCtx<T>]> {
+	return createRawSnippet((_getCtx: () => HeaderCtx<T>) => ({
+		render: () => `<span>${title}</span>`
+	}))
+}
 
 // Self-reference type for arrays (defined before ColumnTableRef)
 export interface ColumnSelfRef {
@@ -208,7 +214,7 @@ export const ColumnState = <T, V = unknown>() => $origin({
 		const table = this._table
 		if (!table) return false
 		// Use ID comparison instead of reference equality (proxies break includes())
-		return table._positionsState.hidden.some(c => c.id === this.id)
+		return table._positionsState.hidden.some((c: ColumnSelfRef) => c.id === this.id)
 	},
 
 	toggleVisiblity() {

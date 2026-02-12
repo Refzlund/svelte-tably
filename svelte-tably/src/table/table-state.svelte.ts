@@ -1,4 +1,4 @@
-import { getContext, setContext, type Snippet, type SvelteComponent, type ComponentConstructorOptions } from 'svelte'
+import { getContext, setContext, type Snippet, type Component } from 'svelte'
 import type { ColumnInstance, RowColumnCtx, ColumnProps } from '../column/column-state.svelte.js'
 import { Data, type DataInstance } from './data.svelte.js'
 import type { ItemState } from 'runic-reorder'
@@ -55,37 +55,25 @@ type SelectOptions<T> = {
 }
 
 /**
- * Column component type with proper generic inference.
- * T is fixed to the table's Item type, V is inferred from the value prop.
+ * Column component type.
+ * Generic V is inferred by Svelte's template compiler at usage site.
  */
-type ColumnComponentType<T> = {
-	<V>(internal: unknown, props: ColumnProps<T, V>): void
-	new <V>(options: ComponentConstructorOptions<ColumnProps<T, V>>): SvelteComponent<ColumnProps<T, V>>
-}
+type ColumnComponentType<T> = Component<ColumnProps<T, any>>
 
 /**
  * Panel component type.
  */
-type PanelComponentType<T> = {
-	(internal: unknown, props: PanelProps<T>): void
-	new(options: ComponentConstructorOptions<PanelProps<T>>): SvelteComponent<PanelProps<T>>
-}
+type PanelComponentType<T> = Component<PanelProps<T>>
 
 /**
  * Expandable component type.
  */
-type ExpandableComponentType<T> = {
-	(internal: unknown, props: ExpandableProps<T>): void
-	new(options: ComponentConstructorOptions<ExpandableProps<T>>): SvelteComponent<ExpandableProps<T>>
-}
+type ExpandableComponentType<T> = Component<ExpandableProps<T>>
 
 /**
  * Row component type.
  */
-type RowComponentType<T> = {
-	(internal: unknown, props: RowProps<T>): void
-	new(options: ComponentConstructorOptions<RowProps<T>>): SvelteComponent<RowProps<T>>
-}
+type RowComponentType<T> = Component<RowProps<T>>
 
 export type ContentCtx<Item = unknown> = {
 	/** Column component - use to define table columns */

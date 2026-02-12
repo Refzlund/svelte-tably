@@ -56,12 +56,12 @@ export const PanelState = <T>() => $origin({
 		}
 
 		const key = this.props.id
-		table.panels[key] = this as PanelInstance
+		table.panels[key] = this as unknown as PanelInstance
 		this._cleanup = () => {
 			delete table.panels[key]
 		}
 	}
 })
 
-export type PanelInstance = ReturnType<ReturnType<typeof PanelState>>
+export type PanelInstance = $origin.Of<ReturnType<typeof PanelState>>
 export type PanelProps<T = unknown> = $origin.Props<ReturnType<typeof PanelState<T>>>

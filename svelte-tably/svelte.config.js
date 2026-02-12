@@ -1,5 +1,5 @@
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte'
-import { svelteOriginPreprocess } from 'svelte-origin/preprocess'
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
+import { svelteOriginPreprocess } from "svelte-origin/preprocess";
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -8,7 +8,7 @@ const config = {
 		vitePreprocess()
 	],
 	kit: {
-		files: { lib: './src' }
+		files: { lib: "./src" }
 	}
 }
 
