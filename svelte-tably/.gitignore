@@ -1,3 +1,4 @@
 _package
 dist
 .svelte-kit
+*.svelte.d.ts

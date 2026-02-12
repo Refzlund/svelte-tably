@@ -20,10 +20,9 @@
 
 <script lang='ts' generics='T'>
 	import { onDestroy } from 'svelte'
-	import { ExpandableState, type ExpandableProps } from './expandable-state.svelte.js'
+	import { ExpandableState } from './expandable-state.svelte.js'
 	import { getTableContext } from '../table/table-state.svelte.js'
 
-	type $$Props = ExpandableProps<T>
 	let expandable = $origin.component(ExpandableState<T>())
 
 	// Get table context during component initialization (MUST be synchronous)

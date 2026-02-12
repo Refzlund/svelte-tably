@@ -61,15 +61,15 @@ export const ExpandableState = <T>() => $origin({
 			throw new Error('svelte-tably: Expandable must be associated with a Table')
 		}
 
-		table.expandable = this as ExpandableInstance
+		table.expandable = this as unknown as ExpandableInstance
 		this._cleanup = () => {
-			if (table.expandable === this) {
+			if ((table.expandable as unknown) === (this as unknown)) {
 				table.expandable = undefined
 			}
 		}
 	}
 })
 
-export type ExpandableInstance = ReturnType<ReturnType<typeof ExpandableState>>
+export type ExpandableInstance = $origin.Of<ReturnType<typeof ExpandableState>>
 export type ExpandableProps<T = unknown> = $origin.Props<ReturnType<typeof ExpandableState<T>>>
 
